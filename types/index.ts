@@ -46,3 +46,9 @@ export interface SystemStatus {
 }
 
 export * from "./product";
+export * from "./customer";
+export * from "./supplier";
+export * from "./inventory";
+export * from "./purchase";
+export * from "./pos";
+export * from "./finance";

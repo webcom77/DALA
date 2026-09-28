@@ -62,7 +62,15 @@ export async function updateSession(request: NextRequest) {
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/products");
+    pathname.startsWith("/products") ||
+    pathname.startsWith("/pos") ||
+    pathname.startsWith("/cash") ||
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/customers") ||
+    pathname.startsWith("/suppliers") ||
+    pathname.startsWith("/purchases") ||
+    pathname.startsWith("/finance") ||
+    pathname.startsWith("/reports");
 
   // Rota raiz "/" -> redireciona conforme autenticação
   if (pathname === "/") {

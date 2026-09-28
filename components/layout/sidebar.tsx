@@ -18,13 +18,11 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
 
 interface NavItem {
   title: string;
-  href?: string;
+  href: string;
   icon: React.ElementType;
-  disabled?: boolean;
 }
 
 interface NavSection {
@@ -44,22 +42,27 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Operacional",
+    title: "Operacional & Vendas",
     items: [
       {
-        title: "PDV",
+        title: "PDV Balcão",
+        href: "/pos",
         icon: ShoppingBag,
-        disabled: true,
       },
       {
-        title: "Produtos",
+        title: "Movimento de Caixa",
+        href: "/cash",
+        icon: Store,
+      },
+      {
+        title: "Catálogo de Peças",
         href: "/products",
         icon: Shirt,
       },
       {
-        title: "Estoque",
+        title: "Controle de Estoque",
+        href: "/inventory",
         icon: Boxes,
-        disabled: true,
       },
     ],
   },
@@ -68,33 +71,33 @@ const navSections: NavSection[] = [
     items: [
       {
         title: "Clientes",
+        href: "/customers",
         icon: Users,
-        disabled: true,
       },
       {
         title: "Fornecedores",
+        href: "/suppliers",
         icon: Truck,
-        disabled: true,
       },
     ],
   },
   {
-    title: "Gestão",
+    title: "Gestão & Estratégia",
     items: [
       {
-        title: "Compras",
+        title: "Pedidos de Compra",
+        href: "/purchases",
         icon: Receipt,
-        disabled: true,
       },
       {
         title: "Financeiro",
+        href: "/finance",
         icon: DollarSign,
-        disabled: true,
       },
       {
-        title: "Relatórios",
+        title: "Relatórios & DRE",
+        href: "/reports",
         icon: BarChart3,
-        disabled: true,
       },
     ],
   },
@@ -127,7 +130,7 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
         </div>
         <div className="flex flex-col">
           <span className="font-bold tracking-tight text-base leading-none">DALA</span>
-          <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">Moda & Gestão</span>
+          <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">Boutique & Gestão</span>
         </div>
       </div>
 
@@ -141,28 +144,7 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
             <div className="space-y-1">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                if (item.disabled || !item.href) {
-                  return (
-                    <div
-                      key={item.title}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg text-sm text-muted-foreground/50 cursor-not-allowed select-none transition-colors"
-                      title="Módulo ainda não implementado (Em breve)"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span>{item.title}</span>
-                      </div>
-                      <Badge
-                        variant="neutral"
-                        className="text-[10px] py-0 px-1.5 font-normal tracking-wide"
-                      >
-                        Em breve
-                      </Badge>
-                    </div>
-                  );
-                }
-
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
                 return (
                   <Link
@@ -188,8 +170,8 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
 
       {/* Rodapé da Sidebar */}
       <div className="p-4 border-t shrink-0 text-center">
-        <p className="text-[11px] text-muted-foreground">
-          DALA v0.1.0 • Etapa 1: Fundação
+        <p className="text-[11px] text-muted-foreground font-medium">
+          DALA Sistema Integrado • 2026
         </p>
       </div>
     </div>
