@@ -1,0 +1,640 @@
+"use client";
+
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  ArrowLeft,
+  Save,
+  Plus,
+  Trash2,
+  Sparkles,
+  Layers,
+  Shirt,
+  DollarSign,
+  AlertCircle,
+  Check,
+  Percent,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import {
+  productFormSchema,
+  type ProductFormData,
+  type ProductVariantFormData,
+} from "@/schemas/product";
+import { productService } from "@/services/product";
+import type { Category, Product } from "@/types";
+import {
+  COMMON_CLOTHING_SIZES,
+  COMMON_CLOTHING_COLORS,
+} from "@/types/product";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+
+interface ProductFormProps {
+  initialData?: Product | null;
+  categories: Category[];
+  isEditing?: boolean;
+}
+
+export function ProductForm({
+  initialData,
+  categories,
+  isEditing = false,
+}: ProductFormProps) {
+  const router = useRouter();
+
+  // Estados locais para o gerador de grade rápida
+  const [selectedSizes, setSelectedSizes] = React.useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = React.useState<string[]>([]);
+  const [customColor, setCustomColor] = React.useState("");
+
+  const defaultValues: ProductFormData = {
+    name: initialData?.name || "",
+    sku: initialData?.sku || "",
+    category_id: initialData?.category_id || (categories[0]?.id ?? ""),
+    cost_price: initialData?.cost_price || 0,
+    sale_price: initialData?.sale_price || 0,
+    description: initialData?.description || "",
+    active: initialData?.active ?? true,
+    variants: initialData?.variants?.map((v) => ({
+      id: v.id,
+      size: v.size,
+      color: v.color,
+      sku_variant: v.sku_variant,
+      barcode: v.barcode || "",
+      active: v.active,
+    })) || [
+      {
+        size: "M",
+        color: "Preto",
+        sku_variant: "",
+        barcode: "",
+        active: true,
+      },
+    ],
+  };
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues,
+  });
+
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: "variants",
+  });
+
+  const currentSku = watch("sku");
+  const costPrice = watch("cost_price") || 0;
+  const salePrice = watch("sale_price") || 0;
+
+  // Cálculo de Margem de Lucro Bruta Estimada
+  const profitMargin =
+    salePrice > 0 && costPrice >= 0
+      ? (((salePrice - costPrice) / salePrice) * 100).toFixed(1)
+      : null;
+
+  // Alternar tamanho no gerador
+  const toggleSize = (size: string) => {
+    setSelectedSizes((prev) =>
+      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+    );
+  };
+
+  // Alternar cor no gerador
+  const toggleColor = (color: string) => {
+    setSelectedColors((prev) =>
+      prev.includes(color) ? prev.filter((c) => c !== color) : [...prev, color]
+    );
+  };
+
+  // Adicionar cor personalizada
+  const addCustomColor = () => {
+    const trimmed = customColor.trim();
+    if (!trimmed) return;
+    if (!selectedColors.includes(trimmed)) {
+      setSelectedColors((prev) => [...prev, trimmed]);
+    }
+    setCustomColor("");
+  };
+
+  // Gerar combinações de Grade automaticamente
+  const generateVariantsMatrix = () => {
+    if (selectedSizes.length === 0 || selectedColors.length === 0) {
+      toast.warning("Selecione pelo menos um tamanho e uma cor para gerar a grade.");
+      return;
+    }
+
+    const baseSku = (currentSku || "PECA").trim().toUpperCase();
+    const newVariants: ProductVariantFormData[] = [];
+
+    selectedSizes.forEach((size) => {
+      selectedColors.forEach((color) => {
+        // Gera SKU simplificado (ex: VEST-001-P-PRETO)
+        const cleanColor = color
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9]/g, "")
+          .toUpperCase()
+          .slice(0, 5);
+
+        const skuVariant = `${baseSku}-${size.toUpperCase()}-${cleanColor}`;
+
+        newVariants.push({
+          size,
+          color,
+          sku_variant: skuVariant,
+          barcode: "",
+          active: true,
+        });
+      });
+    });
+
+    replace(newVariants);
+    toast.success(`${newVariants.length} variações de grade geradas com sucesso!`);
+  };
+
+  const onSubmit = async (data: ProductFormData) => {
+    try {
+      if (isEditing && initialData?.id) {
+        const res = await productService.updateProduct(initialData.id, data);
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success("Produto e variações atualizados com sucesso!");
+      } else {
+        const res = await productService.createProduct(data);
+        if (res.error) {
+          toast.error(res.error);
+          return;
+        }
+        toast.success("Produto cadastrado com sucesso!");
+      }
+
+      router.push("/products");
+      router.refresh();
+    } catch {
+      toast.error("Ocorreu um erro ao salvar o produto.");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in duration-300">
+      {/* Barra Superior de Ações */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b">
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline" size="icon" className="h-9 w-9">
+            <Link href="/products" aria-label="Voltar para a lista">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {isEditing ? `Editar: ${initialData?.name}` : "Novo Produto"}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {isEditing
+                ? "Atualize as informações da peça e a matriz de tamanhos/cores."
+                : "Preencha os dados do modelo e gere a matriz de tamanhos e cores."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost">
+            <Link href="/products">Cancelar</Link>
+          </Button>
+          <Button type="submit" disabled={isSubmitting} className="gap-2">
+            <Save className="h-4 w-4" />
+            {isSubmitting ? "Salvando..." : isEditing ? "Salvar Alterações" : "Salvar Produto"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Coluna 1 & 2: Dados Básicos e Precificação */}
+        <div className="md:col-span-2 space-y-6">
+          {/* Card: Informações Gerais */}
+          <Card className="shadow-sm border">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Shirt className="h-4 w-4 text-primary" />
+                <CardTitle className="text-base">Informações do Modelo</CardTitle>
+              </div>
+              <CardDescription>
+                Identificação principal da peça de vestuário.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="name">Nome da Peça *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Ex: Vestido Midi Floral Evasê"
+                    disabled={isSubmitting}
+                    {...register("name")}
+                  />
+                  {errors.name && (
+                    <p className="text-xs text-destructive">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sku">Referência / SKU Base *</Label>
+                  <Input
+                    id="sku"
+                    placeholder="Ex: VEST-001"
+                    className="font-mono uppercase"
+                    disabled={isSubmitting}
+                    {...register("sku")}
+                  />
+                  {errors.sku && (
+                    <p className="text-xs text-destructive">{errors.sku.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category_id">Categoria</Label>
+                  <select
+                    id="category_id"
+                    disabled={isSubmitting}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    {...register("category_id")}
+                  >
+                    <option value="" className="bg-background text-foreground">
+                      Selecione uma categoria
+                    </option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id} className="bg-background text-foreground">
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="active">Status</Label>
+                  <select
+                    id="active"
+                    disabled={isSubmitting}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    value={watch("active") ? "true" : "false"}
+                    onChange={(e) => setValue("active", e.target.value === "true")}
+                  >
+                    <option value="true" className="bg-background text-foreground">
+                      Ativo (Disponível no sistema)
+                    </option>
+                    <option value="false" className="bg-background text-foreground">
+                      Inativo (Oculto)
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Descrição / Composição do Tecido</Label>
+                <textarea
+                  id="description"
+                  rows={3}
+                  placeholder="Ex: 100% Viscose. Tecido leve, caimento fluido, forro interno e botões frontais."
+                  disabled={isSubmitting}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  {...register("description")}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card: Precificação & Margem */}
+          <Card className="shadow-sm border">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-primary" />
+                <CardTitle className="text-base">Preços & Margem Comercial</CardTitle>
+              </div>
+              <CardDescription>
+                Valores de custo de aquisição e venda da peça.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                <div className="space-y-2">
+                  <Label htmlFor="cost_price">Preço de Custo (R$)</Label>
+                  <Input
+                    id="cost_price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0,00"
+                    disabled={isSubmitting}
+                    {...register("cost_price")}
+                  />
+                  {errors.cost_price && (
+                    <p className="text-xs text-destructive">{errors.cost_price.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sale_price">Preço de Venda (R$) *</Label>
+                  <Input
+                    id="sale_price"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0,00"
+                    disabled={isSubmitting}
+                    {...register("sale_price")}
+                  />
+                  {errors.sale_price && (
+                    <p className="text-xs text-destructive">{errors.sale_price.message}</p>
+                  )}
+                </div>
+
+                {/* Exibição da Margem Estimada */}
+                <div className="rounded-lg border bg-muted/40 p-3 flex flex-col justify-center">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Percent className="h-3 w-3" />
+                    Margem Bruta Estimada
+                  </span>
+                  <span
+                    className={`text-lg font-bold mt-0.5 ${
+                      Number(profitMargin) > 40
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : Number(profitMargin) > 20
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-amber-600 dark:text-amber-400"
+                    }`}
+                  >
+                    {profitMargin !== null ? `${profitMargin}%` : "-"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Coluna 3: Gerador Rápido de Grade */}
+        <div className="space-y-6">
+          <Card className="shadow-sm border bg-muted/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <CardTitle className="text-sm font-semibold">
+                  Gerador Rápido de Grade
+                </CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                Selecione tamanhos e cores para criar a matriz de peças automaticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Seleção de Tamanhos */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Tamanhos Desejados</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {COMMON_CLOTHING_SIZES.map((size) => {
+                    const isSelected = selectedSizes.includes(size);
+                    return (
+                      <button
+                        type="button"
+                        key={size}
+                        onClick={() => toggleSize(size)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-all ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background text-foreground border-input hover:border-primary/50"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Seleção de Cores */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Cores Desejadas</Label>
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 border rounded-md bg-background">
+                  {COMMON_CLOTHING_COLORS.map((color) => {
+                    const isSelected = selectedColors.includes(color);
+                    return (
+                      <button
+                        type="button"
+                        key={color}
+                        onClick={() => toggleColor(color)}
+                        className={`px-2 py-0.5 text-xs rounded border transition-all ${
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary font-medium"
+                            : "bg-muted/50 text-muted-foreground border-transparent hover:border-input"
+                        }`}
+                      >
+                        {color}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Adicionar Cor Extra */}
+                <div className="flex gap-1.5 mt-2">
+                  <Input
+                    placeholder="Outra cor..."
+                    value={customColor}
+                    onChange={(e) => setCustomColor(e.target.value)}
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomColor();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs px-2.5"
+                    onClick={addCustomColor}
+                  >
+                    + Cor
+                  </Button>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full gap-2 text-xs h-9 mt-2"
+                onClick={generateVariantsMatrix}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Gerar Matriz ({selectedSizes.length} × {selectedColors.length} ={" "}
+                {selectedSizes.length * selectedColors.length} peças)
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Matriz de Variações de Grade Cadastradas */}
+      <Card className="shadow-sm border">
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Layers className="h-4 w-4 text-primary" />
+              <CardTitle className="text-base">Variações de Grade Cadastradas</CardTitle>
+            </div>
+            <CardDescription>
+              Cada combinação de tamanho e cor possui um SKU exclusivo para controle e venda.
+            </CardDescription>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              append({
+                size: "M",
+                color: "Preto",
+                sku_variant: `${(currentSku || "PECA").toUpperCase()}-M-NOVA`,
+                barcode: "",
+                active: true,
+              })
+            }
+            className="gap-1.5 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Adicionar Variação Manual
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {errors.variants && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p>{errors.variants.message}</p>
+            </div>
+          )}
+
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted/50 border-b font-semibold text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2 w-28">Tamanho *</th>
+                  <th className="px-3 py-2 w-40">Cor *</th>
+                  <th className="px-3 py-2">SKU da Variação *</th>
+                  <th className="px-3 py-2">Código de Barras (EAN)</th>
+                  <th className="px-3 py-2 text-center w-24">Ativa</th>
+                  <th className="px-3 py-2 text-right w-16">Remover</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {fields.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      Nenhuma variação adicionada. Use o gerador acima ou clique em &quot;Adicionar Variação Manual&quot;.
+                    </td>
+                  </tr>
+                ) : (
+                  fields.map((field, index) => (
+                    <tr key={field.id} className="hover:bg-muted/20">
+                      {/* Tamanho */}
+                      <td className="p-2">
+                        <Input
+                          placeholder="Tam (P, M...)"
+                          className="h-8 text-xs font-semibold"
+                          disabled={isSubmitting}
+                          {...register(`variants.${index}.size`)}
+                        />
+                      </td>
+
+                      {/* Cor */}
+                      <td className="p-2">
+                        <Input
+                          placeholder="Cor (Preto...)"
+                          className="h-8 text-xs"
+                          disabled={isSubmitting}
+                          {...register(`variants.${index}.color`)}
+                        />
+                      </td>
+
+                      {/* SKU Variação */}
+                      <td className="p-2">
+                        <Input
+                          placeholder="SKU-VAR"
+                          className="h-8 text-xs font-mono uppercase"
+                          disabled={isSubmitting}
+                          {...register(`variants.${index}.sku_variant`)}
+                        />
+                      </td>
+
+                      {/* Código de barras */}
+                      <td className="p-2">
+                        <Input
+                          placeholder="789..."
+                          className="h-8 text-xs font-mono"
+                          disabled={isSubmitting}
+                          {...register(`variants.${index}.barcode`)}
+                        />
+                      </td>
+
+                      {/* Ativa */}
+                      <td className="p-2 text-center">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer"
+                          disabled={isSubmitting}
+                          {...register(`variants.${index}.active`)}
+                        />
+                      </td>
+
+                      {/* Botão Remover */}
+                      <td className="p-2 text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => remove(index)}
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          title="Remover variação"
+                          disabled={fields.length === 1}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between items-center border-t py-4 text-xs text-muted-foreground">
+          <span>Total de variações: {fields.length}</span>
+          <Button type="submit" disabled={isSubmitting} className="gap-2">
+            <Save className="h-4 w-4" />
+            {isSubmitting ? "Salvando..." : isEditing ? "Salvar Alterações" : "Salvar Produto"}
+          </Button>
+        </CardFooter>
+      </Card>
+    </form>
+  );
+}
