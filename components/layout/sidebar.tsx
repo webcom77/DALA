@@ -125,44 +125,44 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
   return (
     <div
       className={cn(
-        "flex flex-col h-full bg-[#9d174d] text-white shadow-xl select-none relative overflow-hidden",
+        "flex flex-col h-full max-h-screen bg-[#9d174d] text-white shadow-xl select-none relative overflow-hidden",
         className
       )}
     >
       {/* Detalhe de iluminação sutil de fundo */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-36 h-36 bg-pink-500/10 rounded-full blur-2xl pointer-events-none" />
 
-      {/* Topo / Logo da Boutique (Estilo Jobie com badge arredondado branco) */}
-      <div className="h-20 flex items-center px-6 shrink-0 gap-3 border-b border-white/10">
+      {/* Topo / Logo da Boutique (Compacto e sem ocupar espaço excessivo) */}
+      <div className="h-14 flex items-center px-4 shrink-0 gap-2.5 border-b border-white/10">
         <Link
           href="/dashboard"
           onClick={onItemClick}
-          className="flex items-center gap-3 group focus:outline-none"
+          className="flex items-center gap-2.5 group focus:outline-none"
         >
           {/* Símbolo Arredondado Branco */}
-          <div className="h-10 w-10 rounded-2xl bg-white text-[#9d174d] flex items-center justify-center font-black text-xl shadow-md transition-transform group-hover:scale-105">
+          <div className="h-8 w-8 rounded-xl bg-white text-[#9d174d] flex items-center justify-center font-black text-base shadow-sm transition-transform group-hover:scale-105">
             D
           </div>
           <div className="flex flex-col">
-            <span className="font-extrabold tracking-tight text-lg leading-none text-white flex items-center gap-1.5">
+            <span className="font-extrabold tracking-tight text-base leading-none text-white flex items-center gap-1">
               DALA
-              <Sparkles className="h-3 w-3 text-pink-300" />
+              <Sparkles className="h-2.5 w-2.5 text-pink-300" />
             </span>
-            <span className="text-[11px] text-pink-200/80 font-medium tracking-wide mt-0.5">
+            <span className="text-[10px] text-pink-200/80 font-medium tracking-wide mt-0.5">
               Boutique & Gestão
             </span>
           </div>
         </Link>
       </div>
 
-      {/* Navegação por Módulos */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6 scrollbar-none">
+      {/* Navegação por Módulos - Compacta e SEM Barra de Rolagem */}
+      <div className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {navSections.map((section) => (
-          <div key={section.title} className="space-y-1.5">
-            <h4 className="px-3 text-[10px] font-bold uppercase tracking-wider text-pink-200/60">
+          <div key={section.title} className="space-y-0.5">
+            <h4 className="px-2 text-[9px] font-bold uppercase tracking-wider text-pink-200/60 leading-tight">
               {section.title}
             </h4>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive =
@@ -175,23 +175,23 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
                     href={item.href}
                     onClick={onItemClick}
                     className={cn(
-                      "flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 relative group",
+                      "flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 relative group",
                       isActive
-                        ? "bg-white text-[#9d174d] shadow-md font-bold translate-x-1"
+                        ? "bg-white text-[#9d174d] shadow-sm font-bold"
                         : "text-white/80 hover:text-white hover:bg-white/10"
                     )}
                   >
                     <Icon
                       className={cn(
-                        "h-4 w-4 shrink-0 transition-colors",
+                        "h-3.5 w-3.5 shrink-0 transition-colors",
                         isActive ? "text-[#9d174d]" : "text-pink-200 group-hover:text-white"
                       )}
                     />
-                    <span className="truncate">{item.title}</span>
+                    <span className="truncate leading-normal">{item.title}</span>
 
                     {/* Indicador de item ativo */}
                     {isActive && (
-                      <span className="absolute right-3 w-1.5 h-1.5 rounded-full bg-[#9d174d]" />
+                      <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#9d174d]" />
                     )}
                   </Link>
                 );
@@ -201,13 +201,10 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
         ))}
       </div>
 
-      {/* Rodapé da Sidebar */}
-      <div className="p-4 border-t border-white/10 shrink-0 text-center bg-black/10">
-        <p className="text-[11px] text-pink-200/70 font-medium">
+      {/* Rodapé da Sidebar - Compacto */}
+      <div className="py-2 px-3 border-t border-white/10 shrink-0 text-center bg-black/10">
+        <p className="text-[10px] text-pink-200/70 font-medium leading-tight">
           DALA ERP • Central Rosa
-        </p>
-        <p className="text-[9px] text-pink-200/40 mt-0.5 font-mono">
-          v2.0 • Modo Boutique
         </p>
       </div>
     </div>

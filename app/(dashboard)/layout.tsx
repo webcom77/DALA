@@ -17,7 +17,7 @@ export default function DashboardLayout({
     <AuthProvider>
       <div className="relative min-h-screen bg-[#f4f6fa] dark:bg-[#0c0d12] flex flex-col font-sans">
         {/* Sidebar Fixa Desktop Rosa no Estilo Jobie */}
-        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col">
+        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col h-screen max-h-screen overflow-hidden">
           <Sidebar />
         </aside>
 
