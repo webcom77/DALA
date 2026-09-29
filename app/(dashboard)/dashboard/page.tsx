@@ -13,23 +13,25 @@ import {
   CircleDollarSign,
   BarChart3,
   Settings,
-  Calendar,
-  Clock,
   Search,
+  Filter,
   Sparkles,
   Command,
+  SlidersHorizontal,
+  ChevronDown,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { USER_ROLE_LABELS } from "@/types";
-import { formatDateLong, formatTime } from "@/lib/formatters";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModuleCard, type ModuleAccent } from "@/components/dashboard/module-card";
 
 interface ModuleDefinition {
   id: string;
   title: string;
+  categoryLabel: string;
+  highlightText: string;
   description: string;
   icon: React.ElementType;
   href: string;
@@ -38,156 +40,153 @@ interface ModuleDefinition {
   status: "active" | "development";
 }
 
-interface ModuleSection {
-  title: string;
-  description: string;
-  modules: ModuleDefinition[];
-}
+const ALL_MODULES: ModuleDefinition[] = [
+  // OPERACIONAL & VENDAS
+  {
+    id: "pos",
+    title: "PDV Balcão",
+    categoryLabel: "Operacional & Vendas",
+    highlightText: "Frente de Loja • Vendas Balcão",
+    description: "Vendas rápidas, leitor de código de barras, seleção de grade e emissão de comprovantes.",
+    icon: Store,
+    href: "/pos",
+    accent: "blue",
+    shortcut: "F2",
+    status: "active",
+  },
+  {
+    id: "cash",
+    title: "Movimento de Caixa",
+    categoryLabel: "Operacional & Vendas",
+    highlightText: "Turnos • Gaveta de Dinheiro",
+    description: "Abertura de turno com fundo de troco, suprimentos, sangrias e conferência de valores.",
+    icon: WalletCards,
+    href: "/cash",
+    accent: "amber",
+    shortcut: "F3",
+    status: "active",
+  },
+  {
+    id: "inventory",
+    title: "Controle de Estoque",
+    categoryLabel: "Operacional & Vendas",
+    highlightText: "Grade por Tamanho & Cor",
+    description: "Saldos físicos em tempo real por variação, reposição de coleção e histórico de movimentações.",
+    icon: Boxes,
+    href: "/inventory",
+    accent: "purple",
+    shortcut: "F4",
+    status: "active",
+  },
 
-const moduleSections: ModuleSection[] = [
+  // CADASTROS
   {
-    title: "Operacional & Vendas",
-    description: "Atendimento no balcão, caixa e movimentações de mercadorias",
-    modules: [
-      {
-        id: "pos",
-        title: "PDV Balcão",
-        description: "Vendas rápidas, leitor de código de barras e emissão de comprovantes.",
-        icon: Store,
-        href: "/pos",
-        accent: "emerald",
-        shortcut: "F2",
-        status: "active",
-      },
-      {
-        id: "cash",
-        title: "Movimento de Caixa",
-        description: "Abertura de turno, suprimentos, sangrias e conferência de valores.",
-        icon: WalletCards,
-        href: "/cash",
-        accent: "blue",
-        shortcut: "F3",
-        status: "active",
-      },
-      {
-        id: "inventory",
-        title: "Controle de Estoque",
-        description: "Grade por tamanho/cor, saldos físicos e histórico de movimentações.",
-        icon: Boxes,
-        href: "/inventory",
-        accent: "amber",
-        shortcut: "F4",
-        status: "active",
-      },
-    ],
+    id: "products",
+    title: "Catálogo de Peças",
+    categoryLabel: "Cadastros",
+    highlightText: "Vestuário • Matriz de Grade",
+    description: "Cadastro de roupas, precificação de venda, custo fabril, matriz de grade e referências SKU.",
+    icon: Shirt,
+    href: "/products",
+    accent: "rose",
+    shortcut: "F5",
+    status: "active",
   },
   {
-    title: "Cadastros",
-    description: "Gestão dos registros fundamentais da loja física",
-    modules: [
-      {
-        id: "products",
-        title: "Catálogo de Peças",
-        description: "Cadastro de roupas, precificação, matriz de grade e referências.",
-        icon: Shirt,
-        href: "/products",
-        accent: "indigo",
-        shortcut: "F5",
-        status: "active",
-      },
-      {
-        id: "customers",
-        title: "Clientes",
-        description: "Base de consumidores, histórico de compras, fidelidade e contatos.",
-        icon: Users,
-        href: "/customers",
-        accent: "purple",
-        shortcut: "F6",
-        status: "active",
-      },
-      {
-        id: "suppliers",
-        title: "Fornecedores",
-        description: "Fábricas de confecção, tecelagens, prazos de entrega e contatos.",
-        icon: Truck,
-        href: "/suppliers",
-        accent: "teal",
-        shortcut: "F7",
-        status: "active",
-      },
-    ],
+    id: "customers",
+    title: "Clientes",
+    categoryLabel: "Cadastros",
+    highlightText: "Fidelidade • CRM de Vendas",
+    description: "Base de consumidores, histórico de compras, ticket acumulado, contatos e preferências.",
+    icon: Users,
+    href: "/customers",
+    accent: "emerald",
+    shortcut: "F6",
+    status: "active",
   },
   {
-    title: "Gestão & Estratégia",
-    description: "Compras industriais, saúde financeira e relatórios de inteligência",
-    modules: [
-      {
-        id: "purchases",
-        title: "Pedidos de Compra",
-        description: "Emissão de pedidos fabris, reposição de estoque e recebimento.",
-        icon: ClipboardList,
-        href: "/purchases",
-        accent: "rose",
-        shortcut: "F8",
-        status: "active",
-      },
-      {
-        id: "finance",
-        title: "Financeiro",
-        description: "Contas a pagar, contas a receber, liquidações e fluxo de caixa.",
-        icon: CircleDollarSign,
-        href: "/finance",
-        accent: "emerald",
-        shortcut: "F9",
-        status: "active",
-      },
-      {
-        id: "reports",
-        title: "Relatórios & DRE",
-        description: "Demonstrativo do resultado, desempenho de vendas e curva ABC de peças.",
-        icon: BarChart3,
-        href: "/reports",
-        accent: "indigo",
-        shortcut: "F10",
-        status: "active",
-      },
-    ],
+    id: "suppliers",
+    title: "Fornecedores",
+    categoryLabel: "Cadastros",
+    highlightText: "Confecções • Tecelagens",
+    description: "Fábricas de confecção, tecelagens, prazos médios de entrega e histórico de reposição.",
+    icon: Truck,
+    href: "/suppliers",
+    accent: "teal",
+    shortcut: "F7",
+    status: "active",
+  },
+
+  // GESTÃO & ESTRATÉGIA
+  {
+    id: "purchases",
+    title: "Pedidos de Compra",
+    categoryLabel: "Gestão & Estratégia",
+    highlightText: "Reposição de Coleção",
+    description: "Emissão de pedidos fabris, cotações com confecções e entrada automática em estoque.",
+    icon: ClipboardList,
+    href: "/purchases",
+    accent: "rose",
+    shortcut: "F8",
+    status: "active",
   },
   {
-    title: "Sistema",
-    description: "Configurações gerais e segurança",
-    modules: [
-      {
-        id: "settings",
-        title: "Configurações",
-        description: "Parâmetros gerais da boutique, usuários, tributação e preferências.",
-        icon: Settings,
-        href: "/settings",
-        accent: "slate",
-        shortcut: "F11",
-        status: "active",
-      },
-    ],
+    id: "finance",
+    title: "Financeiro",
+    categoryLabel: "Gestão & Estratégia",
+    highlightText: "Contas a Pagar & Receber",
+    description: "Controle de contas a pagar, recebíveis do PDV, liquidações e fluxo de caixa.",
+    icon: CircleDollarSign,
+    href: "/finance",
+    accent: "emerald",
+    shortcut: "F9",
+    status: "active",
   },
+  {
+    id: "reports",
+    title: "Relatórios & DRE",
+    categoryLabel: "Gestão & Estratégia",
+    highlightText: "Inteligência & Lucratividade",
+    description: "Demonstrativo do resultado (DRE), ranking ABC de peças campeãs e análise de margem.",
+    icon: BarChart3,
+    href: "/reports",
+    accent: "indigo",
+    shortcut: "F10",
+    status: "active",
+  },
+
+  // SISTEMA
+  {
+    id: "settings",
+    title: "Configurações",
+    categoryLabel: "Sistema",
+    highlightText: "Parâmetros & Segurança",
+    description: "Parâmetros gerais da boutique, controle de acesso, tributos e personalização.",
+    icon: Settings,
+    href: "/settings",
+    accent: "slate",
+    shortcut: "F11",
+    status: "active",
+  },
+];
+
+const CATEGORY_SUGGESTIONS = [
+  "Todos os Módulos",
+  "Operacional & Vendas",
+  "Cadastros",
+  "Gestão & Estratégia",
+  "Sistema",
 ];
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { profile, isLoading } = useAuth();
-  const [currentDate, setCurrentDate] = React.useState<Date | null>(null);
+  const { profile } = useAuth();
   const [searchTerm, setSearchTerm] = React.useState("");
-
-  // Relógio do sistema
-  React.useEffect(() => {
-    setCurrentDate(new Date());
-    const timer = setInterval(() => setCurrentDate(new Date()), 30000);
-    return () => clearInterval(timer);
-  }, []);
+  const [selectedCategory, setSelectedCategory] = React.useState("Todos os Módulos");
 
   // Atalhos de teclado no estilo ERP Desktop (F2 a F11)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignora se estiver digitando em um input
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
@@ -196,8 +195,9 @@ export default function DashboardPage() {
         return;
       }
 
-      const allModules = moduleSections.flatMap((s) => s.modules);
-      const matched = allModules.find((m) => m.shortcut.toUpperCase() === e.key.toUpperCase());
+      const matched = ALL_MODULES.find(
+        (m) => m.shortcut.toUpperCase() === e.key.toUpperCase()
+      );
       if (matched && matched.status === "active") {
         e.preventDefault();
         router.push(matched.href);
@@ -212,147 +212,171 @@ export default function DashboardPage() {
   const userRole = profile?.role || "admin";
   const roleLabel = USER_ROLE_LABELS[userRole] || userRole;
 
-  // Filtragem rápida de módulos se o usuário digitar na busca
-  const filteredSections = React.useMemo(() => {
-    if (!searchTerm.trim()) return moduleSections;
-    const term = searchTerm.toLowerCase().trim();
+  // Filtro de Módulos
+  const filteredModules = React.useMemo(() => {
+    let list = ALL_MODULES;
 
-    return moduleSections
-      .map((section) => ({
-        ...section,
-        modules: section.modules.filter(
-          (m) =>
-            m.title.toLowerCase().includes(term) ||
-            m.description.toLowerCase().includes(term) ||
-            m.shortcut.toLowerCase().includes(term)
-        ),
-      }))
-      .filter((section) => section.modules.length > 0);
-  }, [searchTerm]);
+    if (selectedCategory !== "Todos os Módulos") {
+      list = list.filter((m) => m.categoryLabel === selectedCategory);
+    }
+
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      list = list.filter(
+        (m) =>
+          m.title.toLowerCase().includes(q) ||
+          m.description.toLowerCase().includes(q) ||
+          m.categoryLabel.toLowerCase().includes(q) ||
+          m.shortcut.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [selectedCategory, searchTerm]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300 pb-12">
-      {/* Cabeçalho Superior: Título Principal & Faixa de Boas-Vindas */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-border/70">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
-              Menu Operacional
-            </span>
-            <Badge variant="outline" className="text-[11px] capitalize font-medium">
-              {roleLabel}
-            </Badge>
-          </div>
-
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-foreground">
-            Central de Módulos
-          </h1>
-          <p className="text-sm md:text-base text-muted-foreground mt-1">
-            Acesse rapidamente as principais funções do sistema.
-          </p>
+    <div className="space-y-6 animate-in fade-in duration-300 pb-12">
+      {/* 1. BARRA SUPERIOR DE BUSCA E FILTROS (Referência Jobie com botões rosas) */}
+      <div className="bg-white dark:bg-card rounded-3xl p-3 sm:p-4 shadow-sm border border-border/60 flex flex-col md:flex-row items-center gap-3">
+        {/* Dropdown de Unidade / Loja */}
+        <div className="flex items-center gap-2 px-4 py-2 bg-pink-50/60 dark:bg-pink-950/20 text-pink-700 dark:text-pink-300 rounded-full border border-pink-100 dark:border-pink-900/40 text-xs font-bold w-full md:w-auto shrink-0 justify-between">
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-pink-600" />
+            DALA Matriz
+          </span>
+          <ChevronDown className="h-3 w-3 opacity-60" />
         </div>
 
-        {/* Data, Horário e Status */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Localizar módulo..."
-              className="pl-8 h-9 text-xs bg-card border-border/70 focus:bg-background"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground hover:text-foreground font-semibold"
-              >
-                Limpar
-              </button>
-            )}
-          </div>
+        {/* Input de Busca Central Arredondado */}
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Pesquisar por título, função ou atalho (ex: PDV, Caixa, F2)..."
+            className="pl-11 pr-20 h-12 rounded-full border-0 bg-[#f4f6fa] dark:bg-muted/40 text-xs sm:text-sm focus-visible:ring-2 focus-visible:ring-pink-500 placeholder:text-muted-foreground/70"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground font-semibold"
+            >
+              Limpar
+            </button>
+          )}
+        </div>
 
-          <div className="hidden xl:flex items-center gap-2 text-xs text-muted-foreground bg-card border border-border/70 px-3 py-2 rounded-xl shadow-2xs">
-            <Calendar className="h-3.5 w-3.5 text-primary" />
-            <span className="capitalize">
-              {currentDate ? formatDateLong(currentDate) : "Carregando..."}
-            </span>
-            {currentDate && (
-              <>
-                <span className="text-border">•</span>
-                <Clock className="h-3.5 w-3.5" />
-                <span>{formatTime(currentDate)}</span>
-              </>
-            )}
-          </div>
+        {/* Botões de Ação Rosas (Estilo Jobie: FILTER + FIND) */}
+        <div className="flex items-center gap-2 w-full md:w-auto justify-end shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchTerm("");
+              setSelectedCategory("Todos os Módulos");
+            }}
+            className="rounded-full h-11 px-5 text-xs font-bold border-pink-200 text-pink-700 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-300 gap-1.5"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>RESET</span>
+          </Button>
+
+          <Button
+            className="rounded-full h-11 px-7 text-xs font-black tracking-wider uppercase bg-pink-600 hover:bg-pink-700 text-white shadow-md shadow-pink-500/20 gap-1.5"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>BUSCAR</span>
+          </Button>
         </div>
       </div>
 
-      {/* Grade de Seções com os Cards Grandes */}
-      {filteredSections.length === 0 ? (
-        <div className="p-12 text-center bg-card rounded-2xl border border-dashed border-border/80">
-          <Search className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-          <h3 className="font-semibold text-base text-foreground">Nenhum módulo encontrado</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            Não encontramos nenhum módulo com o termo &quot;{searchTerm}&quot;.
+      {/* 2. PILLS DE SUGESTÃO / CATEGORIAS (Referência Jobie com pills rosas) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-1">
+        <span className="text-xs font-bold text-muted-foreground/80 shrink-0 mr-1 hidden sm:inline">
+          Categorias:
+        </span>
+        {CATEGORY_SUGGESTIONS.map((cat) => {
+          const isActive = selectedCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`rounded-full px-4 py-2 text-xs font-bold transition-all whitespace-nowrap ${
+                isActive
+                  ? "bg-pink-600 text-white shadow-sm shadow-pink-500/30 scale-102"
+                  : "bg-white dark:bg-card text-muted-foreground hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border border-border/60"
+              }`}
+            >
+              {cat}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 3. SUBHEADER / CONTROLE DE RESULTADOS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2">
+        <div>
+          <h2 className="text-xl md:text-2xl font-black tracking-tight text-foreground">
+            Central de Módulos DALA
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Exibindo <strong>{filteredModules.length}</strong> {filteredModules.length === 1 ? "módulo disponível" : "módulos disponíveis"} • Operador: <strong className="text-foreground">{userName}</strong> ({roleLabel})
           </p>
-          <button
-            onClick={() => setSearchTerm("")}
-            className="mt-4 px-3 py-1.5 text-xs font-semibold text-primary hover:underline"
+        </div>
+
+        {/* Badge de Atalho F2-F11 */}
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 border border-pink-200/60 dark:border-pink-900/40">
+            <Command className="h-3 w-3 text-pink-600" />
+            Atalhos F2 a F11 ativos
+          </span>
+        </div>
+      </div>
+
+      {/* 4. GRADE DE CARDS GRANDES (Referência visual do Jobie com ícones coloridos e botões rosas) */}
+      {filteredModules.length === 0 ? (
+        <div className="p-12 text-center bg-white dark:bg-card rounded-3xl border border-dashed border-border/80">
+          <Search className="h-12 w-12 text-pink-400 mx-auto mb-3 opacity-60" />
+          <h3 className="font-bold text-base text-foreground">Nenhum módulo encontrado</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Não encontramos resultados para a busca &quot;{searchTerm}&quot;.
+          </p>
+          <Button
+            onClick={() => {
+              setSearchTerm("");
+              setSelectedCategory("Todos os Módulos");
+            }}
+            className="mt-4 rounded-full bg-pink-600 text-white text-xs font-bold"
           >
-            Limpar busca
-          </button>
+            Limpar Filtros
+          </Button>
         </div>
       ) : (
-        <div className="space-y-10">
-          {filteredSections.map((section) => (
-            <section key={section.title} className="space-y-4">
-              {/* Título da Seção */}
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                <div>
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80">
-                    {section.title}
-                  </h2>
-                  <p className="text-xs text-muted-foreground/60 hidden sm:block">
-                    {section.description}
-                  </p>
-                </div>
-                <span className="text-[11px] font-mono text-muted-foreground/60">
-                  {section.modules.length} {section.modules.length === 1 ? "módulo" : "módulos"}
-                </span>
-              </div>
-
-              {/* Grid Responsivo de Cards Grandes */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
-                {section.modules.map((module) => (
-                  <ModuleCard
-                    key={module.id}
-                    title={module.title}
-                    description={module.description}
-                    icon={module.icon}
-                    href={module.href}
-                    accent={module.accent}
-                    shortcut={module.shortcut}
-                    status={module.status}
-                    actionText="Acessar"
-                  />
-                ))}
-              </div>
-            </section>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-5">
+          {filteredModules.map((module) => (
+            <ModuleCard
+              key={module.id}
+              title={module.title}
+              categoryLabel={module.categoryLabel}
+              highlightText={module.highlightText}
+              description={module.description}
+              icon={module.icon}
+              href={module.href}
+              accent={module.accent}
+              shortcut={module.shortcut}
+              status={module.status}
+              actionText="Acessar"
+            />
           ))}
         </div>
       )}
 
-      {/* Dica de Rodapé no Estilo ERP Desktop */}
-      <div className="pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <Command className="h-3.5 w-3.5 text-primary" />
-          <span>
-            Dica rápida: Pressione as teclas <strong className="text-foreground">F2</strong> a <strong className="text-foreground">F11</strong> no teclado para abrir os módulos instantaneamente.
-          </span>
-        </div>
-        <span className="text-[11px] text-muted-foreground/70 font-mono">
-          DALA Sistema Integrado • 2026
+      {/* 5. RODAPÉ DE APOIO */}
+      <div className="pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="font-medium">
+          DALA Sistema Integrado • Moda Feminina & Masculina
+        </span>
+        <span className="text-[11px] font-mono text-muted-foreground/70">
+          Design Inspirado em ERP Moderno 2026
         </span>
       </div>
     </div>
