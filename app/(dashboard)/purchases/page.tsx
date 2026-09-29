@@ -65,9 +65,9 @@ export default function PurchasesPage() {
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
           <Button asChild className="gap-2">
-            <Link href="/purchases/new">
-              <Plus className="h-4 w-4" />
-              Novo Pedido de Compra
+            <Link href="/purchases/new" className="inline-flex items-center gap-2">
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>Novo Pedido de Compra</span>
             </Link>
           </Button>
         </div>

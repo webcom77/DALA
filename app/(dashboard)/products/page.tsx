@@ -137,9 +137,9 @@ export default function ProductsPage() {
           </Button>
 
           <Button asChild className="gap-2">
-            <Link href="/products/new">
-              <Plus className="h-4 w-4" />
-              Novo Produto
+            <Link href="/products/new" className="inline-flex items-center gap-2">
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>Novo Produto</span>
             </Link>
           </Button>
         </div>
