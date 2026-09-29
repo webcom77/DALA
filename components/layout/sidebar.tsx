@@ -4,17 +4,17 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
+  LayoutGrid,
   Settings,
-  ShoppingBag,
+  Store,
   Shirt,
   Boxes,
   Users,
   Truck,
-  Receipt,
-  DollarSign,
+  ClipboardList,
+  CircleDollarSign,
   BarChart3,
-  Store,
+  WalletCards,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -35,9 +35,9 @@ const navSections: NavSection[] = [
     title: "Principal",
     items: [
       {
-        title: "Dashboard",
+        title: "Central de Módulos",
         href: "/dashboard",
-        icon: LayoutDashboard,
+        icon: LayoutGrid,
       },
     ],
   },
@@ -47,17 +47,12 @@ const navSections: NavSection[] = [
       {
         title: "PDV Balcão",
         href: "/pos",
-        icon: ShoppingBag,
+        icon: Store,
       },
       {
         title: "Movimento de Caixa",
         href: "/cash",
-        icon: Store,
-      },
-      {
-        title: "Catálogo de Peças",
-        href: "/products",
-        icon: Shirt,
+        icon: WalletCards,
       },
       {
         title: "Controle de Estoque",
@@ -69,6 +64,11 @@ const navSections: NavSection[] = [
   {
     title: "Cadastros",
     items: [
+      {
+        title: "Catálogo de Peças",
+        href: "/products",
+        icon: Shirt,
+      },
       {
         title: "Clientes",
         href: "/customers",
@@ -87,12 +87,12 @@ const navSections: NavSection[] = [
       {
         title: "Pedidos de Compra",
         href: "/purchases",
-        icon: Receipt,
+        icon: ClipboardList,
       },
       {
         title: "Financeiro",
         href: "/finance",
-        icon: DollarSign,
+        icon: CircleDollarSign,
       },
       {
         title: "Relatórios & DRE",
@@ -122,29 +122,41 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <div className={cn("flex flex-col h-full bg-card border-r", className)}>
-      {/* Topo / Logo */}
-      <div className="h-16 flex items-center px-6 border-b shrink-0 gap-3">
-        <div className="h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm">
-          <Store className="h-5 w-5" />
-        </div>
-        <div className="flex flex-col">
-          <span className="font-bold tracking-tight text-base leading-none">DALA</span>
-          <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">Boutique & Gestão</span>
-        </div>
+    <div className={cn("flex flex-col h-full bg-card/95 border-r border-border/70 backdrop-blur-xs select-none", className)}>
+      {/* Topo / Logo da Boutique */}
+      <div className="h-16 flex items-center px-5 border-b border-border/60 shrink-0 gap-2.5">
+        <Link
+          href="/dashboard"
+          onClick={onItemClick}
+          className="flex items-center gap-2.5 group focus:outline-none"
+        >
+          <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-xs transition-transform group-hover:scale-105">
+            <Store className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold tracking-tight text-sm leading-none text-foreground">
+              DALA
+            </span>
+            <span className="text-[10px] text-muted-foreground mt-0.5 font-medium tracking-wide">
+              Moda & Gestão
+            </span>
+          </div>
+        </Link>
       </div>
 
-      {/* Navegação */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+      {/* Navegação Secundária Compacta */}
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-thin">
         {navSections.map((section) => (
-          <div key={section.title} className="space-y-1.5">
-            <h4 className="px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          <div key={section.title} className="space-y-1">
+            <h4 className="px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
               {section.title}
             </h4>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                const isActive =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
                 return (
                   <Link
@@ -152,14 +164,14 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
                     href={item.href}
                     onClick={onItemClick}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                      "flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
                       isActive
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        ? "bg-muted text-foreground font-semibold shadow-2xs border-l-2 border-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span>{item.title}</span>
+                    <Icon className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+                    <span className="truncate">{item.title}</span>
                   </Link>
                 );
               })}
@@ -169,9 +181,9 @@ export function Sidebar({ onItemClick, className }: SidebarProps) {
       </div>
 
       {/* Rodapé da Sidebar */}
-      <div className="p-4 border-t shrink-0 text-center">
-        <p className="text-[11px] text-muted-foreground font-medium">
-          DALA Sistema Integrado • 2026
+      <div className="p-3 border-t border-border/60 shrink-0 text-center bg-muted/20">
+        <p className="text-[10px] text-muted-foreground font-medium">
+          DALA ERP • Central de Módulos
         </p>
       </div>
     </div>

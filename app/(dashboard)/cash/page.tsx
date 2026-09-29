@@ -20,6 +20,7 @@ import {
   User,
   ShoppingBag,
   RotateCcw,
+  LayoutGrid,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -124,24 +125,36 @@ export default function CashRegisterPage() {
   const cashDifference = finalCount ? Number((finalCountNum - expectedCashInDrawer).toFixed(2)) : 0;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
+      {/* Breadcrumb de Navegação */}
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Link href="/dashboard" className="hover:text-foreground flex items-center gap-1 transition-colors">
+          <LayoutGrid className="w-3.5 h-3.5" />
+          <span>Central de Módulos</span>
+        </Link>
+        <span>/</span>
+        <span className="text-foreground font-medium">Movimento de Caixa</span>
+      </div>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/70">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Controle de Caixa</h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+              Movimento de Caixa
+            </h1>
             <Badge
               variant={isSessionOpen ? "secondary" : "outline"}
               className={
                 isSessionOpen
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-gray-100 text-gray-600 border-gray-300"
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800"
+                  : "bg-muted text-muted-foreground border-border"
               }
             >
               {isSessionOpen ? "Turno Aberto" : "Caixa Fechado"}
             </Badge>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Gerenciamento de turnos, sangrias, suprimentos e conferência de valores do PDV.
           </p>
         </div>

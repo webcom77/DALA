@@ -16,8 +16,8 @@ export default function DashboardLayout({
   return (
     <AuthProvider>
       <div className="relative min-h-screen bg-muted/20 flex flex-col">
-        {/* Sidebar Fixa Desktop (1366x768 / Notebook / Desktop) */}
-        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-64 flex-col">
+        {/* Sidebar Fixa Desktop Compacta (Secundária) */}
+        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-60 flex-col">
           <Sidebar />
         </aside>
 
@@ -27,8 +27,8 @@ export default function DashboardLayout({
           onClose={() => setMobileMenuOpen(false)}
         />
 
-        {/* Área Principal de Conteúdo */}
-        <div className="lg:pl-64 flex flex-col flex-1 min-h-screen">
+        {/* Área Principal de Conteúdo - Central de Módulos */}
+        <div className="lg:pl-60 flex flex-col flex-1 min-h-screen">
           <Header onMenuToggle={() => setMobileMenuOpen(true)} />
           <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
             {children}
