@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/**
+ * Gera um código de referência único e profissional para o produto (ex: REF-10482 ou DAL-10482)
+ */
+export function generateProductReference(prefix = "REF"): string {
+  const code = Math.floor(10000 + Math.random() * 90000);
+  return `${prefix}-${code}`;
+}
+
 export const productVariantSchema = z.object({
   id: z.string().optional(),
   size: z.string().min(1, { message: "O tamanho é obrigatório." }),
