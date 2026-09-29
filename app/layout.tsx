@@ -1,14 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Plus_Jakarta_Sans, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
-const inter = Inter({ subsets: ["latin"] });
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const cormorantGaramond = Cormorant_Garamond({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
-  title: "DALA | Sistema de Gestão para Loja de Roupas",
-  description: "Fundação técnica e sistema moderno de gestão para loja de roupas.",
+  title: "DALA Boutique & Gestão — Central de Módulos",
+  description: "Sistema de gestão e automação para boutique de moda DALA.",
 };
 
 export default function RootLayout({
@@ -18,7 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body
+        className={`${plusJakartaSans.variable} ${cormorantGaramond.variable} font-sans min-h-screen antialiased selection:bg-brand-100 selection:text-brand-800`}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

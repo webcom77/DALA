@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu, LayoutGrid, Search, Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Menu, Search, Bell, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserNav } from "@/components/layout/user-nav";
@@ -13,65 +12,99 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuToggle }: HeaderProps) {
-  const pathname = usePathname();
-  const isHome = pathname === "/dashboard";
+  const router = useRouter();
+  const [searchVal, setSearchVal] = React.useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchVal.trim()) {
+      router.push(`/dashboard?search=${encodeURIComponent(searchVal.trim())}`);
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-30 flex h-18 w-full items-center justify-between border-b border-border/50 bg-white/95 dark:bg-card/95 px-4 md:px-8 backdrop-blur-md">
-      {/* Esquerda: Botão hambúrguer no mobile, status do sistema e link de retorno */}
+    <header
+      className="h-20 bg-white/90 dark:bg-card/90 backdrop-blur-md border-b border-[#F0E6EA] dark:border-border/60 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-20"
+      data-purpose="topbar"
+    >
+      {/* Left Topbar: Unit Selector & Status */}
       <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           onClick={onMenuToggle}
-          className="lg:hidden text-muted-foreground hover:text-foreground"
+          className="lg:hidden text-luxury-muted hover:text-luxury-title"
           aria-label="Abrir menu lateral"
         >
           <Menu className="h-5 w-5" />
         </Button>
 
-        {/* Indicador de Status do Sistema */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-semibold bg-pink-50/70 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300 px-3 py-1 rounded-full border border-pink-100 dark:border-pink-900/40 shadow-2xs">
+        {/* Status Pill */}
+        <div
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-medium tracking-wide"
+          data-purpose="operational-badge"
+        >
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-pink-600"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <span className="hidden sm:inline">Loja Operacional</span>
-          <span className="sm:hidden">Online</span>
         </div>
-
-        {/* Atalho Rápido para a Central de Módulos (quando em subpáginas) */}
-        {!isHome && (
-          <Link href="/dashboard" className="hidden md:flex">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-3 text-xs text-muted-foreground hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/40 rounded-full gap-1.5 transition-colors font-medium"
-            >
-              <LayoutGrid className="h-3.5 w-3.5 text-pink-600" />
-              <span>Central de Módulos</span>
-            </Button>
-          </Link>
-        )}
       </div>
 
-      {/* Direita: Notificações, ThemeToggle e UserNav (Estilo Jobie) */}
-      <div className="flex items-center gap-3">
-        {/* Notificações com badge rosa */}
-        <div className="relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-pink-50/50"
-            aria-label="Notificações"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-pink-600" />
+      {/* Center Search Bar */}
+      <form
+        onSubmit={handleSearch}
+        className="w-full max-w-xl mx-4 sm:mx-6 hidden md:flex"
+        data-purpose="search-container"
+      >
+        <div className="relative flex items-center w-full">
+          <Search className="w-4 h-4 text-luxury-muted absolute left-4 pointer-events-none stroke-[1.8]" />
+          <input
+            value={searchVal}
+            onChange={(e) => setSearchVal(e.target.value)}
+            className="w-full pl-11 pr-24 py-2.5 text-xs bg-[#FAF7F8] dark:bg-muted/30 border border-[#ECDDE2] dark:border-border/60 rounded-full focus:bg-white dark:focus:bg-card focus:border-brand-500 focus:ring-2 focus:ring-brand-100 text-luxury-title dark:text-foreground placeholder:text-luxury-muted/70 transition-all shadow-inner"
+            placeholder="Pesquisar por título, função ou atalho (ex: PDV, Caixa, F2)..."
+            type="text"
+          />
+          <div className="absolute right-2 flex items-center gap-1.5">
+            {searchVal && (
+              <button
+                type="button"
+                onClick={() => setSearchVal("")}
+                className="p-1 rounded-full text-luxury-muted hover:text-luxury-title hover:bg-brand-50 transition-colors"
+                title="Resetar busca"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              type="submit"
+              className="px-3.5 py-1 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-[11px] font-medium tracking-wider shadow-sm transition-all flex items-center gap-1"
+            >
+              <span>Buscar</span>
+            </button>
+          </div>
         </div>
+      </form>
 
+      {/* Right Profile & Utilities */}
+      <div className="flex items-center gap-4" data-purpose="user-utilities">
+        {/* Notifications Button */}
+        <button
+          type="button"
+          className="relative p-2.5 rounded-full text-luxury-body dark:text-muted-foreground hover:bg-brand-50 hover:text-brand-800 transition-colors"
+          title="Notificações"
+        >
+          <Bell className="w-4 h-4 stroke-[1.8]" />
+          <span className="absolute top-2 right-2 w-2 h-2 bg-brand-700 rounded-full ring-2 ring-white dark:ring-card"></span>
+        </button>
+
+        {/* Light/Dark subtle toggle */}
         <ThemeToggle />
-        <div className="h-6 w-[1px] bg-border/60 hidden sm:block" />
+
+        <div className="h-6 w-px bg-[#EFE4E8] dark:bg-border/60 hidden sm:block"></div>
+
+        {/* User Info & Avatar */}
         <UserNav />
       </div>
     </header>

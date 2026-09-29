@@ -4,66 +4,66 @@
 
 @layer base {
   :root {
-    --background: 220 20% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 30 20% 98%;
+    --foreground: 300 9% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 300 9% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 300 9% 13%;
 
-    /* Rosa DALA - Elegante, vibrante e moderno para moda e varejo */
-    --primary: 336 82% 48%;
+    /* DALA Boutique - Bordeaux #9C2A4A (brand-700) */
+    --primary: 343 57% 39%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 336 60% 96%;
-    --secondary-foreground: 336 80% 35%;
+    --secondary: 343 60% 97%;
+    --secondary-foreground: 343 57% 35%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 30 14% 96%;
+    --muted-foreground: 290 5% 48%;
 
-    --accent: 336 60% 96%;
-    --accent-foreground: 336 80% 35%;
+    --accent: 343 60% 97%;
+    --accent-foreground: 343 57% 35%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 336 82% 48%;
+    --border: 336 24% 94%;
+    --input: 336 24% 92%;
+    --ring: 343 57% 39%;
 
-    --radius: 1.25rem;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 224 25% 10%;
-    --foreground: 210 40% 98%;
+    --background: 260 10% 10%;
+    --foreground: 30 20% 98%;
 
-    --card: 224 25% 13%;
-    --card-foreground: 210 40% 98%;
+    --card: 260 10% 13%;
+    --card-foreground: 30 20% 98%;
 
-    --popover: 224 25% 13%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 260 10% 13%;
+    --popover-foreground: 30 20% 98%;
 
-    --primary: 336 86% 62%;
+    --primary: 343 65% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 336 30% 20%;
-    --secondary-foreground: 336 80% 90%;
+    --secondary: 343 30% 20%;
+    --secondary-foreground: 343 80% 90%;
 
-    --muted: 224 20% 18%;
-    --muted-foreground: 220 15% 65%;
+    --muted: 260 10% 18%;
+    --muted-foreground: 260 10% 65%;
 
-    --accent: 336 30% 20%;
-    --accent-foreground: 336 80% 90%;
+    --accent: 343 30% 20%;
+    --accent-foreground: 343 80% 90%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 224 20% 20%;
-    --input: 224 20% 20%;
-    --ring: 336 86% 62%;
+    --border: 336 15% 20%;
+    --input: 336 15% 20%;
+    --ring: 343 65% 58%;
   }
 }
 
@@ -73,6 +73,31 @@
   }
   body {
     @apply bg-background text-foreground;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Barra de rolagem ultra suave e refinada */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF8F6;
+}
+::-webkit-scrollbar-thumb {
+  background: #E8D7DC;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D9BDC6;
+}
+
+.letter-luxury {
+  letter-spacing: 0.18em;
+}
+.letter-subtle {
+  letter-spacing: 0.04em;
 }

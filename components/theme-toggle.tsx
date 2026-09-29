@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -15,28 +14,31 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Alternar tema">
-        <Sun className="h-4 w-4 text-muted-foreground" />
-      </Button>
+      <button
+        type="button"
+        className="p-2 rounded-full text-luxury-body dark:text-muted-foreground hover:bg-brand-50 hover:text-brand-800 transition-colors"
+        aria-label="Alternar tema"
+      >
+        <Moon className="w-4 h-4 stroke-[1.8]" />
+      </button>
     );
   }
 
   const isDark = resolvedTheme === "dark";
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-9 w-9 text-muted-foreground hover:text-foreground"
+    <button
+      type="button"
+      className="p-2 rounded-full text-luxury-body dark:text-muted-foreground hover:bg-brand-50 hover:text-brand-800 transition-colors"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       title={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
       aria-label="Alternar tema claro/escuro"
     >
       {isDark ? (
-        <Sun className="h-4 w-4 transition-all" />
+        <Sun className="w-4 h-4 stroke-[1.8] text-amber-500" />
       ) : (
-        <Moon className="h-4 w-4 transition-all" />
+        <Moon className="w-4 h-4 stroke-[1.8]" />
       )}
-    </Button>
+    </button>
   );
 }
