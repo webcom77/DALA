@@ -1,10 +1,11 @@
-export type PaymentMethod = "money" | "pix" | "credit_card" | "debit_card";
+export type PaymentMethod = "money" | "pix" | "credit_card" | "debit_card" | "promissory";
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   money: "Dinheiro",
   pix: "PIX",
   credit_card: "Cartão de Crédito",
   debit_card: "Cartão de Débito",
+  promissory: "Notinha Promissória",
 };
 
 export interface SaleItem {
@@ -34,6 +35,9 @@ export interface Sale {
   amount_received?: number | null;
   change_amount?: number | null;
   installments?: number;
+  down_payment?: number | null;
+  down_payment_method?: PaymentMethod | null;
+  first_due_date?: string | null;
   items: SaleItem[];
   status: "completed" | "cancelled";
   created_at: string;

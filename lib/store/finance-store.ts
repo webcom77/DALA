@@ -49,13 +49,28 @@ export const INITIAL_TRANSACTIONS: FinancialTransaction[] = [
   {
     id: "fin-5",
     type: "receivable",
-    category: "Vendas a Prazo / Crediário",
-    description: "Parcela 1/2 Vestido Festa - Mariana Albuquerque",
+    category: "Notinha Promissória",
+    description: "Notinha VENDA-00099 - Parcela 1/2 - Mariana Albuquerque",
     amount: 250.00,
     due_date: new Date(Date.now() + 86400000 * 10).toISOString().split("T")[0],
     status: "pending",
+    customer_id: "cust-1",
     customer_name: "Mariana Albuquerque",
-    created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
+    reference_id: "sale-old-0",
+    created_at: new Date(Date.now() - 86400000 * 20).toISOString(),
+  },
+  {
+    id: "fin-6",
+    type: "receivable",
+    category: "Notinha Promissória",
+    description: "Notinha VENDA-00098 - Parcela 1/1 - Beatriz Nogueira",
+    amount: 180.00,
+    due_date: new Date(Date.now() - 86400000 * 5).toISOString().split("T")[0],
+    status: "overdue",
+    customer_id: "cust-2",
+    customer_name: "Beatriz Nogueira",
+    reference_id: "sale-old-1",
+    created_at: new Date(Date.now() - 86400000 * 35).toISOString(),
   },
 ];
 
@@ -97,6 +112,20 @@ export const financeStore = {
   getTransactionById(id: string): FinancialTransaction | null {
     const list = global.__DALA_FINANCE__ || INITIAL_TRANSACTIONS;
     return list.find((t) => t.id === id) || null;
+  },
+
+  getCustomerReceivables(customerId: string): FinancialTransaction[] {
+    const list = global.__DALA_FINANCE__ || INITIAL_TRANSACTIONS;
+    const today = new Date().toISOString().split("T")[0];
+    return list
+      .filter((t) => t.type === "receivable" && t.customer_id === customerId)
+      .map((t) => {
+        if (t.status === "pending" && t.due_date < today) {
+          return { ...t, status: "overdue" as const };
+        }
+        return t;
+      })
+      .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
   },
 
   createTransaction(

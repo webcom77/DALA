@@ -101,3 +101,26 @@
 .letter-subtle {
   letter-spacing: 0.04em;
 }
+
+@media print {
+  /* Oculta tudo que não for o recibo durante impressão */
+  body * {
+    visibility: hidden;
+  }
+  #dala-receipt,
+  #dala-receipt * {
+    visibility: visible;
+  }
+  #dala-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 1.5rem;
+    box-shadow: none !important;
+    border: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}

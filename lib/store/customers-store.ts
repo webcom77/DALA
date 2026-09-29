@@ -1,4 +1,36 @@
-import type { Customer } from "@/types";
+import type { Customer, FinancialTransaction, Sale } from "@/types";
+import { financeStore } from "./finance-store";
+
+function enrichCustomerWithDebt(customer: Customer): Customer {
+  const transactions = financeStore.getTransactions({ type: "receivable" });
+  const today = new Date().toISOString().split("T")[0];
+  const customerTx = transactions.filter(
+    (t) =>
+      t.customer_id === customer.id ||
+      (t.customer_name && t.customer_name.toLowerCase() === customer.name.toLowerCase())
+  );
+
+  let totalDebt = 0;
+  let overdueDebt = 0;
+  let overdueCount = 0;
+
+  customerTx.forEach((t) => {
+    if (t.status === "pending" || t.status === "overdue") {
+      totalDebt += t.amount;
+      if (t.due_date < today || t.status === "overdue") {
+        overdueDebt += t.amount;
+        overdueCount++;
+      }
+    }
+  });
+
+  return {
+    ...customer,
+    total_debt: Number(totalDebt.toFixed(2)),
+    overdue_debt: Number(overdueDebt.toFixed(2)),
+    overdue_count: overdueCount,
+  };
+}
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   {
@@ -20,6 +52,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     active: true,
     total_spent: 1249.70,
     orders_count: 5,
+    credit_limit: 2000.00,
     last_purchase_at: new Date(Date.now() - 86400000 * 3).toISOString(),
     created_at: new Date(Date.now() - 86400000 * 45).toISOString(),
     updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
@@ -44,6 +77,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     active: true,
     total_spent: 879.80,
     orders_count: 3,
+    credit_limit: 1500.00,
     last_purchase_at: new Date(Date.now() - 86400000 * 8).toISOString(),
     created_at: new Date(Date.now() - 86400000 * 60).toISOString(),
     updated_at: new Date(Date.now() - 86400000 * 8).toISOString(),
@@ -59,6 +93,7 @@ export const INITIAL_CUSTOMERS: Customer[] = [
     active: true,
     total_spent: 459.90,
     orders_count: 2,
+    credit_limit: 1000.00,
     last_purchase_at: new Date(Date.now() - 86400000 * 15).toISOString(),
     created_at: new Date(Date.now() - 86400000 * 30).toISOString(),
     updated_at: new Date(Date.now() - 86400000 * 15).toISOString(),
@@ -75,8 +110,9 @@ if (!global.__DALA_CUSTOMERS__) {
 }
 
 export const customersStore = {
-  getCustomers(search?: string): Customer[] {
-    let list = global.__DALA_CUSTOMERS__ || INITIAL_CUSTOMERS;
+  getCustomers(search?: string, filter?: "all" | "with_debt" | "overdue" | "no_debt"): Customer[] {
+    let list = (global.__DALA_CUSTOMERS__ || INITIAL_CUSTOMERS).map(enrichCustomerWithDebt);
+
     if (search) {
       const q = search.toLowerCase().trim();
       list = list.filter(
@@ -87,12 +123,23 @@ export const customersStore = {
           (c.email && c.email.toLowerCase().includes(q))
       );
     }
+
+    if (filter === "with_debt") {
+      list = list.filter((c) => (c.total_debt || 0) > 0);
+    } else if (filter === "overdue") {
+      list = list.filter((c) => (c.overdue_debt || 0) > 0);
+    } else if (filter === "no_debt") {
+      list = list.filter((c) => (c.total_debt || 0) === 0);
+    }
+
     return list;
   },
 
   getCustomerById(id: string): Customer | null {
     const list = global.__DALA_CUSTOMERS__ || INITIAL_CUSTOMERS;
-    return list.find((c) => c.id === id) || null;
+    const found = list.find((c) => c.id === id);
+    if (!found) return null;
+    return enrichCustomerWithDebt(found);
   },
 
   createCustomer(data: Omit<Customer, "id" | "created_at" | "updated_at" | "total_spent" | "orders_count">): Customer {
@@ -108,7 +155,7 @@ export const customersStore = {
     };
     if (!global.__DALA_CUSTOMERS__) global.__DALA_CUSTOMERS__ = [];
     global.__DALA_CUSTOMERS__.unshift(newCustomer);
-    return newCustomer;
+    return enrichCustomerWithDebt(newCustomer);
   },
 
   updateCustomer(id: string, data: Partial<Customer>): Customer | null {
@@ -121,7 +168,7 @@ export const customersStore = {
       updated_at: new Date().toISOString(),
     };
     global.__DALA_CUSTOMERS__[idx] = updated;
-    return updated;
+    return enrichCustomerWithDebt(updated);
   },
 
   deleteCustomer(id: string): boolean {
@@ -141,4 +188,149 @@ export const customersStore = {
       });
     }
   },
+
+  getCustomerDebtDetails(customerId: string): {
+    customer: Customer | null;
+    transactions: FinancialTransaction[];
+    sales: Sale[];
+    totalDebt: number;
+    overdueDebt: number;
+    paidDebt: number;
+    nextDueDate: string | null;
+  } {
+    const customer = this.getCustomerById(customerId);
+    if (!customer) {
+      return {
+        customer: null,
+        transactions: [],
+        sales: [],
+        totalDebt: 0,
+        overdueDebt: 0,
+        paidDebt: 0,
+        nextDueDate: null,
+      };
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    const transactions = financeStore.getCustomerReceivables(customerId);
+    const allSales = (global.__DALA_SALES__ || []) as Sale[];
+    const customerSales = allSales.filter(
+      (s) => s.customer_id === customerId || (s.customer_name && s.customer_name.toLowerCase() === customer.name.toLowerCase())
+    );
+
+    let totalDebt = 0;
+    let overdueDebt = 0;
+    let paidDebt = 0;
+    let nextDueDate: string | null = null;
+
+    transactions.forEach((t) => {
+      if (t.status === "paid") {
+        paidDebt += t.amount;
+      } else if (t.status === "pending" || t.status === "overdue") {
+        totalDebt += t.amount;
+        if (t.due_date < today || t.status === "overdue") {
+          overdueDebt += t.amount;
+        }
+        if (!nextDueDate || t.due_date < nextDueDate) {
+          nextDueDate = t.due_date;
+        }
+      }
+    });
+
+    return {
+      customer: {
+        ...customer,
+        total_debt: Number(totalDebt.toFixed(2)),
+        overdue_debt: Number(overdueDebt.toFixed(2)),
+        overdue_count: transactions.filter((t) => t.status === "overdue" || (t.status === "pending" && t.due_date < today)).length,
+      },
+      transactions,
+      sales: customerSales,
+      totalDebt: Number(totalDebt.toFixed(2)),
+      overdueDebt: Number(overdueDebt.toFixed(2)),
+      paidDebt: Number(paidDebt.toFixed(2)),
+      nextDueDate,
+    };
+  },
+
+  receivePromissoryPayment(data: {
+    customerId: string;
+    transactionId: string;
+    amount: number;
+    paymentMethod: "money" | "pix" | "credit_card" | "debit_card";
+    cashierName?: string;
+  }): {
+    success: boolean;
+    receipt?: {
+      receiptNumber: string;
+      customerName: string;
+      amountPaid: number;
+      paymentMethod: string;
+      paidAt: string;
+      installmentDescription: string;
+      remainingDebt: number;
+    };
+    error?: string;
+  } {
+    const tx = financeStore.getTransactionById(data.transactionId);
+    if (!tx) {
+      return { success: false, error: "Parcela não encontrada." };
+    }
+
+    const customer = this.getCustomerById(data.customerId);
+    if (!customer) {
+      return { success: false, error: "Cliente não encontrado." };
+    }
+
+    const now = new Date().toISOString();
+    const receiptNumber = `REC-00${Date.now().toString().slice(-4)}`;
+
+    if (data.amount >= tx.amount) {
+      financeStore.markAsPaid(data.transactionId, data.paymentMethod);
+    } else {
+      tx.amount = Number((tx.amount - data.amount).toFixed(2));
+      financeStore.createTransaction({
+        type: "receivable",
+        category: "Notinha Promissória",
+        description: `Amortização ${tx.description} - ${receiptNumber}`,
+        amount: data.amount,
+        due_date: now.split("T")[0],
+        paid_at: now,
+        status: "paid",
+        payment_method: data.paymentMethod,
+        customer_id: customer.id,
+        customer_name: customer.name,
+        reference_id: tx.reference_id,
+      });
+    }
+
+    // Se o caixa estiver aberto, registra a entrada
+    const session = global.__DALA_CASH_SESSION__;
+    if (session && session.status === "open") {
+      session.total_sales = Number((session.total_sales + data.amount).toFixed(2));
+      if (data.paymentMethod === "money") {
+        session.total_cash = Number((session.total_cash + data.amount).toFixed(2));
+      } else if (data.paymentMethod === "pix") {
+        session.total_pix = Number((session.total_pix + data.amount).toFixed(2));
+      } else {
+        session.total_card = Number((session.total_card + data.amount).toFixed(2));
+      }
+    }
+
+    const debtDetails = this.getCustomerDebtDetails(data.customerId);
+
+    return {
+      success: true,
+      receipt: {
+        receiptNumber,
+        customerName: customer.name,
+        amountPaid: data.amount,
+        paymentMethod: data.paymentMethod,
+        paidAt: now,
+        installmentDescription: tx.description,
+        remainingDebt: debtDetails.totalDebt,
+      },
+    };
+  },
 };
+

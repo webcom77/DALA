@@ -5,7 +5,8 @@ import { customerSchema } from "@/schemas/customer";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || undefined;
-  const customers = customersStore.getCustomers(search);
+  const filter = (searchParams.get("filter") || "all") as "all" | "with_debt" | "overdue" | "no_debt";
+  const customers = customersStore.getCustomers(search, filter);
   return NextResponse.json({ customers });
 }
 

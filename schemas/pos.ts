@@ -3,13 +3,16 @@ import { z } from "zod";
 export const checkoutSaleSchema = z.object({
   customer_id: z.string().optional().nullable(),
   customer_name: z.string().optional().nullable(),
-  payment_method: z.enum(["money", "pix", "credit_card", "debit_card"]),
+  payment_method: z.enum(["money", "pix", "credit_card", "debit_card", "promissory"]),
   subtotal: z.coerce.number().min(0.01),
   discount: z.coerce.number().min(0).default(0),
   total_amount: z.coerce.number().min(0.01),
   amount_received: z.coerce.number().optional().nullable(),
   change_amount: z.coerce.number().optional().nullable(),
   installments: z.coerce.number().int().min(1).max(12).default(1),
+  down_payment: z.coerce.number().min(0).optional().nullable(),
+  down_payment_method: z.enum(["money", "pix", "credit_card", "debit_card"]).optional().nullable(),
+  first_due_date: z.string().optional().nullable(),
   items: z.array(
     z.object({
       variant_id: z.string(),

@@ -1,10 +1,36 @@
-import type { Customer } from "@/types";
+import type { Customer, FinancialTransaction, Sale } from "@/types";
 import type { CustomerFormData } from "@/schemas/customer";
 
+export interface CustomerDebtDetails {
+  customer: Customer | null;
+  transactions: FinancialTransaction[];
+  sales: Sale[];
+  totalDebt: number;
+  overdueDebt: number;
+  paidDebt: number;
+  nextDueDate: string | null;
+}
+
+export interface PaymentReceipt {
+  receiptNumber: string;
+  customerName: string;
+  amountPaid: number;
+  paymentMethod: string;
+  paidAt: string;
+  installmentDescription: string;
+  remainingDebt: number;
+}
+
 export const customerService = {
-  async getCustomers(search?: string): Promise<Customer[]> {
+  async getCustomers(
+    search?: string,
+    filter?: "all" | "with_debt" | "overdue" | "no_debt"
+  ): Promise<Customer[]> {
     try {
-      const url = `/api/customers${search ? `?search=${encodeURIComponent(search)}` : ""}`;
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (filter && filter !== "all") params.set("filter", filter);
+      const url = `/api/customers${params.toString() ? `?${params.toString()}` : ""}`;
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) return [];
       const data = await res.json();
@@ -25,7 +51,41 @@ export const customerService = {
     }
   },
 
-  async createCustomer(data: CustomerFormData): Promise<{ customer: Customer | null; error: string | null }> {
+  async getCustomerDebtDetails(id: string): Promise<CustomerDebtDetails | null> {
+    try {
+      const res = await fetch(`/api/customers/${id}/debt`, { cache: "no-store" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  },
+
+  async receivePayment(data: {
+    customerId: string;
+    transactionId: string;
+    amount: number;
+    paymentMethod: string;
+  }): Promise<{ success: boolean; receipt?: PaymentReceipt; error?: string }> {
+    try {
+      const res = await fetch(`/api/customers/${data.customerId}/debt`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        return { success: false, error: d.error || "Erro ao processar baixa." };
+      }
+      return d;
+    } catch {
+      return { success: false, error: "Erro de conexão ao processar baixa." };
+    }
+  },
+
+  async createCustomer(
+    data: CustomerFormData
+  ): Promise<{ customer: Customer | null; error: string | null }> {
     try {
       const res = await fetch("/api/customers", {
         method: "POST",
@@ -40,7 +100,10 @@ export const customerService = {
     }
   },
 
-  async updateCustomer(id: string, data: CustomerFormData): Promise<{ customer: Customer | null; error: string | null }> {
+  async updateCustomer(
+    id: string,
+    data: CustomerFormData
+  ): Promise<{ customer: Customer | null; error: string | null }> {
     try {
       const res = await fetch(`/api/customers/${id}`, {
         method: "PUT",

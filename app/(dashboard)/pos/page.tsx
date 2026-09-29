@@ -21,13 +21,15 @@ import {
   Store,
   AlertCircle,
   Shirt,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { Product, ProductVariant, Customer, CashSession, Sale, SaleItem, StockLevel } from "@/types";
 import { posService } from "@/services/pos";
 import { inventoryService } from "@/services/inventory";
-import { formatCurrency, formatDateTime } from "@/lib/formatters";
+import { formatCurrency, formatDateTime, formatDate } from "@/lib/formatters";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -66,10 +68,20 @@ export default function PosPage() {
 
   // Payment Modal
   const [isPaymentOpen, setIsPaymentOpen] = React.useState(false);
-  const [paymentMethod, setPaymentMethod] = React.useState<"money" | "pix" | "credit_card" | "debit_card">("pix");
+  const [paymentMethod, setPaymentMethod] = React.useState<"money" | "pix" | "credit_card" | "debit_card" | "promissory">("pix");
   const [amountReceived, setAmountReceived] = React.useState<string>("");
   const [installments, setInstallments] = React.useState<number>(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Promissory Note State
+  const [promissoryInstallments, setPromissoryInstallments] = React.useState<number>(1);
+  const [promissoryDownPayment, setPromissoryDownPayment] = React.useState<string>("0");
+  const [promissoryDownPaymentMethod, setPromissoryDownPaymentMethod] = React.useState<"money" | "pix" | "credit_card" | "debit_card">("money");
+  const [promissoryFirstDueDate, setPromissoryFirstDueDate] = React.useState<string>(() => {
+    const d = new Date(Date.now() + 86400000 * 30);
+    return d.toISOString().split("T")[0];
+  });
+  const [receiptMode, setReceiptMode] = React.useState<"coupon" | "promissory">("coupon");
 
   // Completed Sale Receipt Modal
   const [completedSale, setCompletedSale] = React.useState<Sale | null>(null);
@@ -166,6 +178,32 @@ export default function PosPage() {
     const received = parseFloat(amountReceived.replace(",", ".")) || 0;
     return Math.max(0, Number((received - cartTotal).toFixed(2)));
   }, [paymentMethod, amountReceived, cartTotal]);
+
+  // Promissory Note Calculations
+  const promissoryDownVal = React.useMemo(() => {
+    return Math.max(0, parseFloat(promissoryDownPayment.replace(",", ".")) || 0);
+  }, [promissoryDownPayment]);
+
+  const promissoryRemaining = React.useMemo(() => {
+    return Math.max(0, Number((cartTotal - promissoryDownVal).toFixed(2)));
+  }, [cartTotal, promissoryDownVal]);
+
+  const promissoryInstallmentAmount = React.useMemo(() => {
+    const inst = Math.max(1, promissoryInstallments);
+    return Number((promissoryRemaining / inst).toFixed(2));
+  }, [promissoryRemaining, promissoryInstallments]);
+
+  const promissoryDates = React.useMemo(() => {
+    const dates: string[] = [];
+    if (!promissoryFirstDueDate) return dates;
+    const base = new Date(promissoryFirstDueDate + "T12:00:00");
+    for (let i = 0; i < promissoryInstallments; i++) {
+      const d = new Date(base);
+      d.setMonth(d.getMonth() + i);
+      dates.push(d.toISOString().split("T")[0]);
+    }
+    return dates;
+  }, [promissoryFirstDueDate, promissoryInstallments]);
 
   // Add Variant directly to Cart
   const handleAddVariantToCart = (product: Product, variant: ProductVariant) => {
@@ -287,6 +325,17 @@ export default function PosPage() {
       }
     }
 
+    if (paymentMethod === "promissory") {
+      if (!selectedCustomer) {
+        toast.error("Para gerar a Venda em Notinha Promissória / Carnê, é obrigatório selecionar uma cliente.");
+        return;
+      }
+      if (promissoryDownVal > cartTotal) {
+        toast.error("O valor da entrada não pode ser maior que o total da compra.");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       const res = await posService.checkoutSale({
@@ -309,18 +358,34 @@ export default function PosPage() {
         total_amount: cartTotal,
         payment_method: paymentMethod,
         amount_received:
-          paymentMethod === "money" ? parseFloat(amountReceived.replace(",", ".")) || cartTotal : cartTotal,
+          paymentMethod === "money"
+            ? parseFloat(amountReceived.replace(",", ".")) || cartTotal
+            : paymentMethod === "promissory"
+            ? promissoryDownVal
+            : cartTotal,
         change_amount: changeAmount,
-        installments: paymentMethod === "credit_card" ? installments : 1,
+        installments:
+          paymentMethod === "credit_card"
+            ? installments
+            : paymentMethod === "promissory"
+            ? promissoryInstallments
+            : 1,
+        down_payment: paymentMethod === "promissory" && promissoryDownVal > 0 ? promissoryDownVal : undefined,
+        down_payment_method:
+          paymentMethod === "promissory" && promissoryDownVal > 0 ? promissoryDownPaymentMethod : undefined,
+        first_due_date: paymentMethod === "promissory" ? promissoryFirstDueDate : undefined,
       });
 
       if (res.sale) {
         setCompletedSale(res.sale);
+        setReceiptMode(res.sale.payment_method === "promissory" ? "promissory" : "coupon");
         setIsPaymentOpen(false);
         setCart([]);
         setDiscountValue(0);
         setSelectedCustomer(null);
         setAmountReceived("");
+        setPromissoryDownPayment("0");
+        setPromissoryInstallments(1);
         toast.success(`Venda ${res.sale.sale_number} concluída com sucesso!`);
         // Refresh session total and inventory stock
         posService.getActiveSession().then(setSession);
@@ -873,12 +938,13 @@ export default function PosPage() {
 
             {/* Payment Method Tabs */}
             <div className="p-5 space-y-4">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-5 gap-2">
                 {[
                   { id: "pix", label: "PIX", icon: QrCode },
                   { id: "credit_card", label: "Crédito", icon: CreditCard },
                   { id: "debit_card", label: "Débito", icon: CreditCard },
                   { id: "money", label: "Dinheiro", icon: Banknote },
+                  { id: "promissory", label: "Notinha", icon: FileText, badge: "Carnê" },
                 ].map((m) => {
                   const Icon = m.icon;
                   const active = paymentMethod === m.id;
@@ -886,16 +952,23 @@ export default function PosPage() {
                     <button
                       key={m.id}
                       onClick={() =>
-                        setPaymentMethod(m.id as "money" | "pix" | "credit_card" | "debit_card")
+                        setPaymentMethod(m.id as "money" | "pix" | "credit_card" | "debit_card" | "promissory")
                       }
-                      className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-semibold ${
+                      className={`relative p-2 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-xs font-semibold ${
                         active
-                          ? "bg-gray-900 text-white border-gray-900 shadow-xs"
+                          ? m.id === "promissory"
+                            ? "bg-rose-950 text-rose-100 border-rose-900 shadow-sm"
+                            : "bg-gray-900 text-white border-gray-900 shadow-xs"
                           : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                       }`}
                     >
+                      {m.badge && (
+                        <span className="absolute -top-1.5 right-1 px-1.5 py-0.2 bg-rose-600 text-[9px] font-bold text-white rounded-full leading-none">
+                          {m.badge}
+                        </span>
+                      )}
                       <Icon className="w-5 h-5" />
-                      <span>{m.label}</span>
+                      <span className="truncate max-w-full">{m.label}</span>
                     </button>
                   );
                 })}
@@ -996,6 +1069,160 @@ export default function PosPage() {
                 </div>
               )}
 
+              {/* 5. NOTINHA PROMISSÓRIA & CARNÊ */}
+              {paymentMethod === "promissory" && (
+                <div className="space-y-3 bg-rose-50/50 p-3.5 rounded-xl border border-rose-200/80">
+                  {/* Customer Status Alert */}
+                  {!selectedCustomer ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        Cliente não identificada
+                      </div>
+                      <p className="text-[11px] text-amber-700">
+                        Para vender no crediário / notinha promissória, é obrigatório selecionar uma cliente cadastrada.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setIsPaymentOpen(false);
+                          setShowCustomerPicker(true);
+                        }}
+                        className="w-full text-xs h-8 bg-white border-amber-300 text-amber-800 hover:bg-amber-100 font-semibold"
+                      >
+                        Identificar Cliente Agora
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="bg-white p-2.5 rounded-lg border border-rose-200 shadow-xs flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-rose-100 text-rose-800 font-bold flex items-center justify-center text-xs">
+                          {selectedCustomer.name.slice(0, 1).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-900">{selectedCustomer.name}</p>
+                          <p className="text-[10px] text-gray-500">
+                            {selectedCustomer.cpf_cnpj ? `CPF: ${selectedCustomer.cpf_cnpj}` : "Sem CPF cadastrado"}
+                            {selectedCustomer.phone && ` • ${selectedCustomer.phone}`}
+                          </p>
+                        </div>
+                      </div>
+                      {typeof selectedCustomer.total_debt === "number" && selectedCustomer.total_debt > 0 ? (
+                        <div className="text-right">
+                          <span className="text-[9px] text-gray-500 block">Débito Atual:</span>
+                          <span className="text-xs font-bold text-rose-700">
+                            {formatCurrency(selectedCustomer.total_debt)}
+                          </span>
+                        </div>
+                      ) : (
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                          Ficha Limpa
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Entrada (Down Payment) */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-700 block mb-1">
+                        Entrada no Balcão (R$):
+                      </label>
+                      <Input
+                        type="text"
+                        value={promissoryDownPayment}
+                        onChange={(e) => setPromissoryDownPayment(e.target.value)}
+                        placeholder="0.00"
+                        className="h-8 text-xs font-semibold bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-700 block mb-1">
+                        Forma da Entrada:
+                      </label>
+                      <select
+                        value={promissoryDownPaymentMethod}
+                        onChange={(e) =>
+                          setPromissoryDownPaymentMethod(
+                            e.target.value as "money" | "pix" | "credit_card" | "debit_card"
+                          )
+                        }
+                        disabled={promissoryDownVal <= 0}
+                        className="w-full h-8 px-2 bg-white border border-gray-200 rounded-md text-xs font-medium text-gray-800 focus:outline-none disabled:opacity-50"
+                      >
+                        <option value="money">Dinheiro (Entra no Caixa)</option>
+                        <option value="pix">PIX Instantâneo</option>
+                        <option value="credit_card">Cartão de Crédito</option>
+                        <option value="debit_card">Cartão de Débito</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Parcelamento & 1º Vencimento */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-700 block mb-1">
+                        Parcelas da Notinha:
+                      </label>
+                      <select
+                        value={promissoryInstallments}
+                        onChange={(e) => setPromissoryInstallments(parseInt(e.target.value) || 1)}
+                        className="w-full h-8 px-2 bg-white border border-gray-200 rounded-md text-xs font-medium text-gray-800 focus:outline-none"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                          <option key={n} value={n}>
+                            {n}x de {formatCurrency(promissoryRemaining / n)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-gray-700 block mb-1">
+                        1º Vencimento:
+                      </label>
+                      <Input
+                        type="date"
+                        value={promissoryFirstDueDate}
+                        onChange={(e) => setPromissoryFirstDueDate(e.target.value)}
+                        className="h-8 text-xs bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Installments Breakdown Preview */}
+                  <div className="bg-white rounded-lg p-2 border border-rose-200/80 space-y-1 text-xs">
+                    <div className="flex justify-between items-center text-gray-500 text-[10px] uppercase font-bold border-b border-gray-100 pb-1">
+                      <span>Plano de Pagamento do Carnê</span>
+                      <span>{promissoryInstallments}x Parcelas</span>
+                    </div>
+                    <div className="max-h-20 overflow-y-auto divide-y divide-gray-50 pr-1">
+                      {promissoryDownVal > 0 && (
+                        <div className="flex justify-between py-0.5 text-[10px] text-emerald-700 font-medium">
+                          <span>Entrada à vista ({promissoryDownPaymentMethod})</span>
+                          <span>{formatCurrency(promissoryDownVal)}</span>
+                        </div>
+                      )}
+                      {promissoryDates.map((dateStr, idx) => (
+                        <div key={idx} className="flex justify-between py-0.5 text-[10px] text-gray-700">
+                          <span className="font-mono text-gray-500">
+                            Parcela {String(idx + 1).padStart(2, "0")}/{String(promissoryInstallments).padStart(2, "0")} • {formatDate(dateStr)}
+                          </span>
+                          <strong className="font-semibold text-gray-900">
+                            {formatCurrency(promissoryInstallmentAmount)}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-gray-100 text-[10px] font-bold text-rose-900">
+                      <span>Total da Notinha a Assinar:</span>
+                      <span>{formatCurrency(promissoryRemaining)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Customer summary */}
               <div className="text-xs text-gray-500 flex justify-between px-1">
                 <span>Cliente: {selectedCustomer ? selectedCustomer.name : "Cliente Balcão"}</span>
@@ -1020,107 +1247,273 @@ export default function PosPage() {
         </div>
       )}
 
-      {/* COMPLETED SALE RECEIPT MODAL (Comprovante / Cupom Não-Fiscal) */}
+      {/* COMPLETED SALE RECEIPT MODAL (Comprovante / Cupom Não-Fiscal / Nota Promissória) */}
       {completedSale && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[90vh]">
+            {/* Modal Header & Mode Switcher */}
+            <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setReceiptMode("coupon")}
+                  className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                    receiptMode === "coupon"
+                      ? "bg-white text-gray-900 shadow-xs border border-gray-200"
+                      : "text-gray-500 hover:text-gray-800"
+                  }`}
+                >
+                  Cupom da Venda
+                </button>
+                {completedSale.payment_method === "promissory" && (
+                  <button
+                    type="button"
+                    onClick={() => setReceiptMode("promissory")}
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 ${
+                      receiptMode === "promissory"
+                        ? "bg-rose-900 text-white shadow-xs"
+                        : "text-rose-700 hover:bg-rose-100/50"
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Nota Promissória &amp; Carnê
+                  </button>
+                )}
+              </div>
+              <span className="text-[10px] text-gray-400 font-mono font-bold">
+                {completedSale.sale_number}
+              </span>
+            </div>
+
             {/* Printable Receipt Area */}
-            <div id="dala-receipt" className="p-6 font-mono text-xs text-gray-800 space-y-4">
-              <div className="text-center border-b border-dashed border-gray-300 pb-3">
-                <h2 className="font-bold text-base tracking-widest text-gray-900 uppercase">
-                  DALA BOUTIQUE
-                </h2>
-                <p className="text-[10px] text-gray-500 mt-0.5">Moda Feminina & Masculina</p>
-                <p className="text-[10px] text-gray-400">CNPJ: 12.345.678/0001-90</p>
-                <p className="text-[10px] text-gray-400">Rua das Flores, 100 - Centro</p>
-              </div>
+            <div id="dala-receipt" className="p-6 font-mono text-xs text-gray-800 space-y-4 overflow-y-auto flex-1">
+              {receiptMode === "coupon" ? (
+                <>
+                  <div className="text-center border-b border-dashed border-gray-300 pb-3">
+                    <h2 className="font-bold text-base tracking-widest text-gray-900 uppercase">
+                      DALA BOUTIQUE
+                    </h2>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Moda Feminina &amp; Masculina</p>
+                    <p className="text-[10px] text-gray-400">CNPJ: 12.345.678/0001-90</p>
+                    <p className="text-[10px] text-gray-400">Rua das Flores, 100 - Centro</p>
+                  </div>
 
-              <div className="text-[11px] space-y-0.5">
-                <div className="flex justify-between">
-                  <span>CUPOM:</span>
-                  <strong>{completedSale.sale_number}</strong>
-                </div>
-                <div className="flex justify-between">
-                  <span>DATA:</span>
-                  <span>{formatDateTime(completedSale.created_at)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>CLIENTE:</span>
-                  <span className="truncate max-w-[160px]">
-                    {completedSale.customer_name || "Consumidor Final"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div className="border-t border-b border-dashed border-gray-300 py-2 space-y-1.5">
-                <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase">
-                  <span>Item / Tam / Cor</span>
-                  <span>Qtd x Total</span>
-                </div>
-                {completedSale.items.map((it, idx) => (
-                  <div key={idx} className="text-[11px]">
-                    <div className="font-bold text-gray-900 truncate">{it.product_name}</div>
-                    <div className="flex justify-between text-gray-600 text-[10px]">
-                      <span>
-                        Tam: {it.size} | Cor: {it.color}
-                      </span>
-                      <span>
-                        {it.quantity} x {formatCurrency(it.unit_price)} = {formatCurrency(it.total_price)}
+                  <div className="text-[11px] space-y-0.5">
+                    <div className="flex justify-between">
+                      <span>CUPOM:</span>
+                      <strong>{completedSale.sale_number}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>DATA:</span>
+                      <span>{formatDateTime(completedSale.created_at)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>CLIENTE:</span>
+                      <span className="truncate max-w-[160px]">
+                        {completedSale.customer_name || "Consumidor Final"}
                       </span>
                     </div>
                   </div>
-                ))}
-              </div>
 
-              {/* Totals */}
-              <div className="space-y-1 text-[11px]">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>{formatCurrency(completedSale.subtotal)}</span>
-                </div>
-                {completedSale.discount > 0 && (
-                  <div className="flex justify-between text-emerald-700">
-                    <span>Desconto:</span>
-                    <span>- {formatCurrency(completedSale.discount)}</span>
+                  {/* Items Table */}
+                  <div className="border-t border-b border-dashed border-gray-300 py-2 space-y-1.5">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase">
+                      <span>Item / Tam / Cor</span>
+                      <span>Qtd x Total</span>
+                    </div>
+                    {completedSale.items.map((it, idx) => (
+                      <div key={idx} className="text-[11px]">
+                        <div className="font-bold text-gray-900 truncate">{it.product_name}</div>
+                        <div className="flex justify-between text-gray-600 text-[10px]">
+                          <span>
+                            Tam: {it.size} | Cor: {it.color}
+                          </span>
+                          <span>
+                            {it.quantity} x {formatCurrency(it.unit_price)} = {formatCurrency(it.total_price)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-                <div className="flex justify-between text-sm font-black text-gray-900 pt-1 border-t border-gray-200">
-                  <span>TOTAL PAGO:</span>
-                  <span>{formatCurrency(completedSale.total_amount)}</span>
-                </div>
-                <div className="flex justify-between text-gray-600 text-[10px]">
-                  <span>Forma:</span>
-                  <span className="uppercase font-bold">{completedSale.payment_method}</span>
-                </div>
-                {completedSale.change_amount && completedSale.change_amount > 0 ? (
-                  <div className="flex justify-between text-gray-600 text-[10px]">
-                    <span>Troco:</span>
-                    <span>{formatCurrency(completedSale.change_amount)}</span>
-                  </div>
-                ) : null}
-              </div>
 
-              <div className="text-center border-t border-dashed border-gray-300 pt-3 text-[10px] text-gray-500">
-                <p>Trocas em até 30 dias com etiquetas intactas.</p>
-                <p className="mt-1 font-bold text-gray-800">Obrigado pela preferência!</p>
-              </div>
+                  {/* Totals */}
+                  <div className="space-y-1 text-[11px]">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>{formatCurrency(completedSale.subtotal)}</span>
+                    </div>
+                    {completedSale.discount > 0 && (
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Desconto:</span>
+                        <span>- {formatCurrency(completedSale.discount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-black text-gray-900 pt-1 border-t border-gray-200">
+                      <span>TOTAL DA VENDA:</span>
+                      <span>{formatCurrency(completedSale.total_amount)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600 text-[10px]">
+                      <span>Forma:</span>
+                      <span className="uppercase font-bold">
+                        {completedSale.payment_method === "promissory"
+                          ? `Notinha Promissória (${completedSale.installments || 1}x)`
+                          : completedSale.payment_method}
+                      </span>
+                    </div>
+                    {completedSale.payment_method === "promissory" && (
+                      <>
+                        {completedSale.down_payment && completedSale.down_payment > 0 ? (
+                          <div className="flex justify-between text-emerald-700 text-[10px]">
+                            <span>Entrada Paga:</span>
+                            <span>{formatCurrency(completedSale.down_payment)} ({completedSale.down_payment_method})</span>
+                          </div>
+                        ) : null}
+                        <div className="flex justify-between text-rose-800 text-[10px] font-bold">
+                          <span>Saldo no Carnê:</span>
+                          <span>{formatCurrency(completedSale.total_amount - (completedSale.down_payment || 0))}</span>
+                        </div>
+                      </>
+                    )}
+                    {completedSale.change_amount && completedSale.change_amount > 0 ? (
+                      <div className="flex justify-between text-gray-600 text-[10px]">
+                        <span>Troco:</span>
+                        <span>{formatCurrency(completedSale.change_amount)}</span>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="text-center border-t border-dashed border-gray-300 pt-3 text-[10px] text-gray-500">
+                    <p>Trocas em até 30 dias com etiquetas intactas.</p>
+                    <p className="mt-1 font-bold text-gray-800">Obrigado pela preferência!</p>
+                  </div>
+                </>
+              ) : (
+                /* NOTA PROMISSÓRIA & CARNÊ DE CREDIÁRIO */
+                <div className="space-y-4 font-sans text-gray-800">
+                  <div className="text-center border-b border-rose-200 pb-3">
+                    <Badge className="bg-rose-100 text-rose-800 border-rose-300 text-[10px] mb-1">
+                      DOCUMENTO DE CRÉDITO &bull; CARNÊ BOUTIQUE
+                    </Badge>
+                    <h2 className="font-serif font-black text-lg tracking-wider text-rose-950 uppercase">
+                      DALA BOUTIQUE
+                    </h2>
+                    <p className="text-[10px] text-gray-500 font-mono">CNPJ: 12.345.678/0001-90 &bull; Moda &amp; Estilo</p>
+                    <p className="text-[10px] text-gray-400">Rua das Flores, 100 - Centro &bull; WhatsApp (11) 98765-4321</p>
+                  </div>
+
+                  {/* Header info */}
+                  <div className="bg-rose-50/50 p-3 rounded-lg border border-rose-100 text-[11px] space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">Nº DO TÍTULO / VENDA:</span>
+                      <strong className="font-mono text-rose-950">{completedSale.sale_number}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500 font-medium">EMISSÃO:</span>
+                      <span>{formatDateTime(completedSale.created_at)}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-rose-100">
+                      <span className="text-gray-500 font-medium">CLIENTE DEVEDOR(A):</span>
+                      <strong className="text-gray-900">{completedSale.customer_name}</strong>
+                    </div>
+                  </div>
+
+                  {/* Confissão de Dívida */}
+                  <div className="text-[11px] leading-relaxed text-gray-700 bg-white p-3 rounded-lg border border-gray-200">
+                    <p>
+                      <strong>CONFISSÃO DE DÍVIDA:</strong> Reconheço(emos) a exatidão desta dívida decorrente da compra das mercadorias discriminadas no pedido <strong>{completedSale.sale_number}</strong> e prometo(emos) pagar por esta <strong>NOTA PROMISSÓRIA</strong> à <strong>DALA BOUTIQUE</strong> ou à sua ordem a quantia líquida e certa de:
+                    </p>
+                    <div className="text-base font-black text-rose-900 mt-2 text-center bg-rose-50 py-1.5 rounded border border-rose-200">
+                      {formatCurrency(completedSale.total_amount - (completedSale.down_payment || 0))}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1 text-center">
+                      (Total da compra: {formatCurrency(completedSale.total_amount)}
+                      {completedSale.down_payment ? ` • Entrada paga: ${formatCurrency(completedSale.down_payment)} via ${completedSale.down_payment_method}` : " • Sem entrada"})
+                    </p>
+                  </div>
+
+                  {/* Installments Table */}
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gray-100 px-3 py-1.5 text-[10px] font-bold text-gray-700 uppercase flex justify-between">
+                      <span>Parcela &bull; Vencimento</span>
+                      <span>Valor (R$)</span>
+                    </div>
+                    <div className="divide-y divide-gray-100 bg-white text-[11px]">
+                      {Array.from({ length: completedSale.installments || 1 }).map((_, idx) => {
+                        const totalProm = completedSale.total_amount - (completedSale.down_payment || 0);
+                        const count = completedSale.installments || 1;
+                        const instVal = totalProm / count;
+                        const baseDate = completedSale.first_due_date
+                          ? new Date(completedSale.first_due_date + "T12:00:00")
+                          : new Date(Date.now() + 86400000 * 30);
+                        const dueDate = new Date(baseDate);
+                        dueDate.setMonth(dueDate.getMonth() + idx);
+                        const dueStr = dueDate.toISOString().split("T")[0];
+
+                        return (
+                          <div key={idx} className="px-3 py-2 flex items-center justify-between">
+                            <div>
+                              <span className="font-bold text-gray-900">
+                                Parcela {String(idx + 1).padStart(2, "0")}/{String(count).padStart(2, "0")}
+                              </span>
+                              <span className="text-[10px] text-gray-500 ml-2 font-mono">
+                                Venc: {formatDate(dueStr)}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold text-gray-900">{formatCurrency(instVal)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Items summary */}
+                  <div className="text-[10px] text-gray-500 border-t border-dashed border-gray-200 pt-2 space-y-0.5">
+                    <span className="font-bold text-gray-700 block">Peças Adquiridas:</span>
+                    {completedSale.items.map((it, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{it.quantity}x {it.product_name} ({it.size}/{it.color})</span>
+                        <span>{formatCurrency(it.total_price)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Signature line */}
+                  <div className="pt-6 text-center space-y-1">
+                    <div className="border-t border-gray-900 mx-6" />
+                    <p className="font-bold text-xs text-gray-900 uppercase">
+                      {completedSale.customer_name}
+                    </p>
+                    <p className="text-[10px] text-gray-500">Assinatura do(a) Devedor(a)</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Receipt Modal Buttons */}
             <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs font-semibold"
+                  onClick={() => window.print()}
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Imprimir {receiptMode === "promissory" ? "Nota Promissória" : "Cupom"}
+                </Button>
+                {completedSale.customer_id && (
+                  <Link href={`/customers/${completedSale.customer_id}`}>
+                    <Button variant="ghost" size="sm" className="text-xs text-rose-800 hover:bg-rose-50">
+                      Ver Ficha
+                    </Button>
+                  </Link>
+                )}
+              </div>
               <Button
-                variant="outline"
                 size="sm"
-                className="gap-1.5 text-xs"
-                onClick={() => window.print()}
-              >
-                <Printer className="w-3.5 h-3.5" />
-                Imprimir
-              </Button>
-              <Button
-                size="sm"
-                className="bg-gray-900 text-white text-xs gap-1.5"
+                className="bg-gray-900 text-white text-xs gap-1.5 font-bold"
                 onClick={() => setCompletedSale(null)}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
