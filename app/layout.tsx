@@ -19,6 +19,13 @@ const cormorantGaramond = Cormorant_Garamond({
 export const metadata: Metadata = {
   title: "DALA Boutique & Gestão — Central de Módulos",
   description: "Sistema de gestão e automação para boutique de moda DALA.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
