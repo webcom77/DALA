@@ -29,7 +29,13 @@ export async function GET(
         return NextResponse.json({
           product: {
             ...data,
+            ean13: data.sku,
+            image_url: data.image_url || null,
             variants_count: data.variants?.length || 0,
+            variants: data.variants?.map((v: any) => ({
+              ...v,
+              ean13: v.barcode || v.sku_variant,
+            })),
           },
         });
       }
@@ -90,7 +96,7 @@ export async function PUT(
         let updatedProd: any = null;
         const res = await supabase.from("products").update(updatePayload).eq("id", id).select().single();
 
-        if (res.error && res.error.code === "42703") {
+        if (res.error && (res.error.code === "42703" || res.error.code === "PGRST204" || res.error.message?.includes("image_url"))) {
           delete updatePayload.image_url;
           const retry = await supabase.from("products").update(updatePayload).eq("id", id).select().single();
           updatedProd = retry.data;

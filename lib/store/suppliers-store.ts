@@ -7,7 +7,9 @@ declare global {
   var __DALA_SUPPLIERS__: Supplier[] | undefined;
 }
 
-global.__DALA_SUPPLIERS__ = [];
+if (!global.__DALA_SUPPLIERS__) {
+  global.__DALA_SUPPLIERS__ = [];
+}
 
 export const suppliersStore = {
   getSuppliers(search?: string): Supplier[] {

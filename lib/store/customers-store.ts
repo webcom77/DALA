@@ -39,9 +39,24 @@ declare global {
   var __DALA_CUSTOMERS__: Customer[] | undefined;
 }
 
-global.__DALA_CUSTOMERS__ = [];
+if (!global.__DALA_CUSTOMERS__) {
+  global.__DALA_CUSTOMERS__ = [];
+}
 
 export const customersStore = {
+  enrichCustomer(customer: Customer): Customer {
+    return enrichCustomerWithDebt(customer);
+  },
+
+  syncCustomer(customer: Customer): void {
+    if (!global.__DALA_CUSTOMERS__) global.__DALA_CUSTOMERS__ = [];
+    const idx = global.__DALA_CUSTOMERS__.findIndex((c) => c.id === customer.id);
+    if (idx >= 0) {
+      global.__DALA_CUSTOMERS__[idx] = customer;
+    } else {
+      global.__DALA_CUSTOMERS__.unshift(customer);
+    }
+  },
   getCustomers(search?: string, filter?: "all" | "with_debt" | "overdue" | "no_debt"): Customer[] {
     let list = (global.__DALA_CUSTOMERS__ || INITIAL_CUSTOMERS).map(enrichCustomerWithDebt);
 

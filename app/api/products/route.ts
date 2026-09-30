@@ -39,7 +39,13 @@ export async function GET(request: NextRequest) {
       if (!error && data) {
         const mapped = data.map((p) => ({
           ...p,
+          ean13: p.sku,
+          image_url: p.image_url || null,
           variants_count: p.variants?.length || 0,
+          variants: p.variants?.map((v: any) => ({
+            ...v,
+            ean13: v.barcode || v.sku_variant,
+          })),
         }));
         return NextResponse.json({ products: mapped });
       }
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
         let newProd: any = null;
         const res = await supabase.from("products").insert(prodPayload).select().single();
 
-        if (res.error && res.error.code === "42703") {
+        if (res.error && (res.error.code === "42703" || res.error.code === "PGRST204" || res.error.message?.includes("image_url"))) {
           // Coluna image_url ainda não existe no Postgres do Supabase, tenta sem ela
           delete prodPayload.image_url;
           const retry = await supabase.from("products").insert(prodPayload).select().single();
@@ -120,16 +126,23 @@ export async function POST(request: NextRequest) {
             .select();
 
           if (!varErr) {
+            const finalProduct = {
+              ...newProd,
+              ean13: newProd.sku,
+              image_url: data.image_url || newProd.image_url || null,
+              variants: createdVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
+              variants_count: createdVariants?.length || 0,
+            };
+
+            // Mantém o store local em sincronia
+            try {
+              productsStore.createProduct(finalProduct as any);
+            } catch {
+              // Ignore
+            }
+
             return NextResponse.json(
-              {
-                product: {
-                  ...newProd,
-                  ean13: newProd.sku,
-                  image_url: data.image_url || newProd.image_url || null,
-                  variants: createdVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
-                  variants_count: createdVariants?.length || 0,
-                },
-              },
+              { product: finalProduct },
               { status: 201 }
             );
           }

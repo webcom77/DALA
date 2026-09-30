@@ -14,8 +14,12 @@ declare global {
   var __DALA_CASH_SESSION__: CashSession | null | undefined;
 }
 
-global.__DALA_SALES__ = [];
-global.__DALA_CASH_SESSION__ = null;
+if (!global.__DALA_SALES__) {
+  global.__DALA_SALES__ = [];
+}
+if (global.__DALA_CASH_SESSION__ === undefined) {
+  global.__DALA_CASH_SESSION__ = null;
+}
 
 export const posStore = {
   getActiveCashSession(): CashSession | null {

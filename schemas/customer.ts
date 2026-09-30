@@ -32,6 +32,7 @@ export const customerSchema = z.object({
   zip_code: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
   active: z.boolean().default(true),
+  credit_limit: z.coerce.number().optional().default(0),
 });
 
 export type CustomerFormData = z.infer<typeof customerSchema>;

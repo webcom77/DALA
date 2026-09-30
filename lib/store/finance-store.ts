@@ -7,7 +7,9 @@ declare global {
   var __DALA_FINANCE__: FinancialTransaction[] | undefined;
 }
 
-global.__DALA_FINANCE__ = [];
+if (!global.__DALA_FINANCE__) {
+  global.__DALA_FINANCE__ = [];
+}
 
 export const financeStore = {
   getTransactions(filters?: { type?: string; status?: string; search?: string }): FinancialTransaction[] {

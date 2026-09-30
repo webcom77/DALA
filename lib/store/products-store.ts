@@ -69,7 +69,9 @@ declare global {
   var __DALA_CATEGORIES__: Category[] | undefined;
 }
 
-global.__DALA_PRODUCTS__ = [];
+if (!global.__DALA_PRODUCTS__) {
+  global.__DALA_PRODUCTS__ = [];
+}
 
 if (!global.__DALA_CATEGORIES__) {
   global.__DALA_CATEGORIES__ = [...INITIAL_CATEGORIES];
