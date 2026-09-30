@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Barcode,
   CheckCircle2,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -109,7 +110,8 @@ export function ProductForm({
   const [selectedColors, setSelectedColors] = React.useState<string[]>([]);
   const [customColor, setCustomColor] = React.useState("");
 
-  // Estados da Câmera ao vivo
+  // Estados da Foto & Câmera
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = React.useState(false);
   const [isCameraOpen, setIsCameraOpen] = React.useState(false);
   const [cameraFacing, setCameraFacing] = React.useState<"environment" | "user">("environment");
   const videoRef = React.useRef<HTMLVideoElement>(null);
@@ -222,6 +224,12 @@ export function ProductForm({
     setIsCameraOpen(false);
   }, []);
 
+  // Fechar Modal de Foto
+  const closePhotoModal = () => {
+    stopCamera();
+    setIsPhotoModalOpen(false);
+  };
+
   // Alternar entre câmera frontal e traseira
   const toggleCameraFacing = async () => {
     const nextFacing = cameraFacing === "environment" ? "user" : "environment";
@@ -244,6 +252,7 @@ export function ProductForm({
       toast.success("Foto do produto capturada com sucesso!");
     }
     stopCamera();
+    setIsPhotoModalOpen(false);
   };
 
   // Processar upload de arquivo selecionado
@@ -253,6 +262,7 @@ export function ProductForm({
     try {
       const compressed = await compressImageFile(file);
       setValue("image_url", compressed, { shouldDirty: true });
+      setIsPhotoModalOpen(false);
       toast.success("Foto carregada com sucesso!");
     } catch {
       toast.error("Erro ao carregar a foto do produto.");
@@ -405,73 +415,157 @@ export function ProductForm({
         onChange={handleFileChange}
       />
 
-      {/* Modal / Overlay da Câmera ao Vivo */}
-      {isCameraOpen && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-4">
-          <div className="bg-background rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-border flex flex-col">
+      {/* Modal / Pop-up de Escolha ou Captura de Foto */}
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-background rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-border flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Cabeçalho do Pop-up */}
             <div className="flex items-center justify-between p-4 border-b">
-              <div className="flex items-center gap-2">
-                <Camera className="w-5 h-5 text-[#E06B67]" />
-                <h3 className="font-semibold text-sm">Tirar Foto do Produto</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-[#E06B67]/10 flex items-center justify-center text-[#E06B67]">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Foto do Produto</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {isCameraOpen ? "Posicione a peça no quadro e capture" : "Escolha como deseja adicionar a foto"}
+                  </p>
+                </div>
               </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 rounded-full"
-                onClick={stopCamera}
+                onClick={closePhotoModal}
               >
                 <X className="w-4 h-4" />
               </Button>
             </div>
 
-            <div className="relative aspect-square bg-black overflow-hidden flex items-center justify-center">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
-              {/* Mira visual para enquadramento da peça */}
-              <div className="absolute inset-8 border border-white/40 rounded-xl pointer-events-none border-dashed" />
-              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] text-white font-medium flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Câmera Ativa
+            {/* Conteúdo do Pop-up */}
+            {isCameraOpen ? (
+              /* Visualização da Câmera ao Vivo dentro do Pop-up */
+              <div className="flex flex-col">
+                <div className="relative aspect-square bg-black overflow-hidden flex items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Mira visual para enquadramento da peça */}
+                  <div className="absolute inset-8 border border-white/40 rounded-xl pointer-events-none border-dashed" />
+                  <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] text-white font-medium flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Câmera Ativa
+                  </div>
+                </div>
+
+                <div className="p-4 bg-muted/30 flex items-center justify-between gap-3 border-t">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleCameraFacing}
+                    className="gap-1.5 text-xs"
+                    title="Inverter Câmera (Frontal / Traseira)"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Inverter
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={capturePhoto}
+                    className="bg-gradient-to-r from-[#E06B67] to-[#F48884] hover:opacity-90 text-white font-semibold gap-2 shadow-md px-5 text-xs h-9"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Capturar Foto
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={stopCamera}
+                    className="text-xs"
+                  >
+                    Voltar
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Opções de Escolha dentro do Pop-up */
+              <div className="p-5 space-y-3.5">
+                {/* Opção 1: Tirar Foto com Câmera */}
+                <button
+                  type="button"
+                  onClick={() => startCamera("environment")}
+                  className="w-full p-4 rounded-xl border-2 border-border/80 hover:border-[#E06B67] bg-card hover:bg-[#E06B67]/5 flex items-center gap-4 transition-all text-left group cursor-pointer"
+                >
+                  <div className="h-12 w-12 rounded-xl bg-[#E06B67]/10 group-hover:bg-[#E06B67] group-hover:text-white flex items-center justify-center text-[#E06B67] shrink-0 transition-colors">
+                    <Camera className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground group-hover:text-[#E06B67] transition-colors">
+                      Tirar Foto com a Câmera
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Abrir câmera ao vivo do celular ou computador para fotografar o modelo
+                    </p>
+                  </div>
+                </button>
 
-            <div className="p-4 bg-muted/30 flex items-center justify-between gap-3 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={toggleCameraFacing}
-                className="gap-1.5 text-xs"
-                title="Inverter Câmera (Frontal / Traseira)"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Inverter
-              </Button>
+                {/* Opção 2: Escolher do Computador / Celular */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full p-4 rounded-xl border-2 border-border/80 hover:border-[#E06B67] bg-card hover:bg-[#E06B67]/5 flex items-center gap-4 transition-all text-left group cursor-pointer"
+                >
+                  <div className="h-12 w-12 rounded-xl bg-muted group-hover:bg-[#E06B67] group-hover:text-white flex items-center justify-center text-muted-foreground shrink-0 transition-colors">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground group-hover:text-[#E06B67] transition-colors">
+                      Escolher Foto do Aparelho
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Selecionar arquivo salvo no computador ou galeria de fotos do celular
+                    </p>
+                  </div>
+                </button>
 
-              <Button
-                type="button"
-                onClick={capturePhoto}
-                className="bg-gradient-to-r from-[#E06B67] to-[#F48884] hover:opacity-90 text-white font-semibold gap-2 shadow-md px-5"
-              >
-                <Camera className="w-4 h-4" />
-                Capturar Foto
-              </Button>
+                {/* Opção 3: Câmera Nativa do Celular */}
+                <button
+                  type="button"
+                  onClick={() => nativeCameraInputRef.current?.click()}
+                  className="w-full py-2.5 px-3 rounded-lg border border-input text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-[#E06B67]" />
+                  Abrir Câmera Nativa do Celular
+                </button>
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={stopCamera}
-                className="text-xs"
-              >
-                Cancelar
-              </Button>
-            </div>
+                {currentImageUrl && (
+                  <div className="pt-2 border-t flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Foto já configurada</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        handleRemovePhoto();
+                        setIsPhotoModalOpen(false);
+                      }}
+                      className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 gap-1.5 h-8"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remover Foto Atual
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -508,101 +602,8 @@ export function ProductForm({
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Coluna 1 & 2: Foto, Dados Básicos e Precificação */}
+        {/* Coluna 1 & 2: Dados Básicos e Precificação */}
         <div className="md:col-span-2 space-y-6">
-          {/* Card: Foto da Peça */}
-          <Card className="shadow-sm border">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="h-4 w-4 text-[#E06B67]" />
-                  <CardTitle className="text-base">Foto do Produto</CardTitle>
-                </div>
-                <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                  Catálogo & PDV
-                </Badge>
-              </div>
-              <CardDescription className="text-xs">
-                Adicione a foto da peça ou tire na hora com a câmera para visualização rápida no caixa e estoque.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row items-center gap-5">
-                {/* Visualizador da Foto / Preview */}
-                <div className="relative w-40 h-40 sm:w-44 sm:h-44 rounded-2xl border-2 border-dashed border-border/80 bg-muted/30 overflow-hidden flex flex-col items-center justify-center shrink-0 group shadow-xs">
-                  {currentImageUrl ? (
-                    <>
-                      <img
-                        src={currentImageUrl}
-                        alt="Foto do Produto"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleRemovePhoto}
-                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-rose-600 transition-colors shadow-md"
-                        title="Remover foto"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-3 text-muted-foreground">
-                      <div className="h-12 w-12 rounded-xl bg-[#E06B67]/10 flex items-center justify-center text-[#E06B67] mb-2">
-                        <Camera className="w-6 h-6" />
-                      </div>
-                      <span className="text-xs font-medium text-foreground">Sem Foto</span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5">Tire ou adicione</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Botões de Ação para Foto */}
-                <div className="space-y-3 w-full">
-                  <div className="flex flex-wrap gap-2.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => startCamera("environment")}
-                      disabled={isSubmitting}
-                      className="gap-2 text-xs border-[#E06B67]/30 hover:border-[#E06B67] hover:bg-[#E06B67]/5 text-foreground"
-                    >
-                      <Camera className="w-4 h-4 text-[#E06B67]" />
-                      Tirar Foto com Câmera
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isSubmitting}
-                      className="gap-2 text-xs"
-                    >
-                      <Upload className="w-4 h-4 text-muted-foreground" />
-                      Escolher do Computador / Celular
-                    </Button>
-
-                    {currentImageUrl && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleRemovePhoto}
-                        disabled={isSubmitting}
-                        className="gap-1.5 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Remover Foto
-                      </Button>
-                    )}
-                  </div>
-
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Formatos aceitos: JPG, PNG, WEBP. A foto é otimizada automaticamente para não pesar no sistema e aparecer instantaneamente no PDV.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Card: Informações Gerais */}
           <Card className="shadow-sm border">
@@ -904,6 +905,106 @@ export function ProductForm({
                 Gerar Matriz ({selectedSizes.length} × {selectedColors.length} ={" "}
                 {selectedSizes.length * selectedColors.length} peças)
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Card: Foto do Produto (Abaixo do Gerador Rápido de Grade) */}
+          <Card className="shadow-sm border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-[#E06B67]" />
+                  <CardTitle className="text-sm font-semibold">Foto do Produto</CardTitle>
+                </div>
+                <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                  Catálogo & PDV
+                </Badge>
+              </div>
+              <CardDescription className="text-xs">
+                Foto da peça para identificação visual nas vendas e catálogo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {currentImageUrl ? (
+                <div className="space-y-3">
+                  <div className="relative w-full aspect-4/3 rounded-xl border border-border overflow-hidden bg-muted/30 group shadow-xs">
+                    <img
+                      src={currentImageUrl}
+                      alt="Foto do Produto"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setIsPhotoModalOpen(true)}
+                        className="gap-1.5 text-xs font-medium shadow-md"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-[#E06B67]" />
+                        Trocar Foto
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleRemovePhoto}
+                        className="gap-1.5 text-xs shadow-md"
+                        title="Remover foto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsPhotoModalOpen(true)}
+                      className="w-full gap-2 text-xs border-[#E06B67]/30 hover:border-[#E06B67] hover:bg-[#E06B67]/5 text-foreground"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-[#E06B67]" />
+                      Alterar Foto
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemovePhoto}
+                      className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2.5"
+                      title="Remover foto"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => setIsPhotoModalOpen(true)}
+                  className="border-2 border-dashed border-border/80 hover:border-[#E06B67]/60 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition-all hover:bg-[#E06B67]/5 group"
+                >
+                  <div className="h-11 w-11 rounded-xl bg-[#E06B67]/10 group-hover:bg-[#E06B67]/20 flex items-center justify-center text-[#E06B67] mb-2.5 transition-colors">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-semibold text-foreground">Nenhuma foto adicionada</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Tire uma foto ou selecione do computador/celular
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPhotoModalOpen(true);
+                    }}
+                    className="mt-3.5 gap-2 text-xs bg-gradient-to-r from-[#E06B67] to-[#F48884] hover:opacity-95 text-white shadow-xs w-full"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    Escolher ou Tirar Foto
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
