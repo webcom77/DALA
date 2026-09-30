@@ -62,7 +62,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <input
             value={searchVal}
             onChange={(e) => setSearchVal(e.target.value)}
-            className="w-full pl-11 pr-24 py-2.5 text-xs bg-[#FAF7F8] dark:bg-muted/30 border border-[#ECDDE2] dark:border-border/60 rounded-full focus:bg-white dark:focus:bg-card focus:border-brand-500 focus:ring-2 focus:ring-brand-100 text-luxury-title dark:text-foreground placeholder:text-luxury-muted/70 transition-all shadow-inner"
+            className="w-full pl-11 pr-24 py-2 text-xs bg-gray-50/80 dark:bg-muted/30 border border-gray-200 dark:border-border/60 rounded-full focus:bg-white dark:focus:bg-card focus:border-[#E06B67] focus:ring-2 focus:ring-[#E06B67]/20 text-gray-900 dark:text-foreground placeholder:text-gray-400 transition-all shadow-2xs"
             placeholder="Pesquisar por título, função ou atalho (ex: PDV, Caixa, F2)..."
             type="text"
           />
@@ -71,7 +71,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
               <button
                 type="button"
                 onClick={() => setSearchVal("")}
-                className="p-1 rounded-full text-luxury-muted hover:text-luxury-title hover:bg-brand-50 transition-colors"
+                className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
                 title="Resetar busca"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -79,7 +79,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
             )}
             <button
               type="submit"
-              className="px-3.5 py-1 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-[11px] font-medium tracking-wider shadow-sm transition-all flex items-center gap-1"
+              className="px-4 py-1.5 rounded-full bg-[#E06B67] hover:bg-[#ce5753] text-white text-xs font-semibold tracking-wide shadow-xs transition-all flex items-center gap-1"
             >
               <span>Buscar</span>
             </button>
@@ -92,11 +92,11 @@ export function Header({ onMenuToggle }: HeaderProps) {
         {/* Notifications Button */}
         <button
           type="button"
-          className="relative p-2.5 rounded-full text-luxury-body dark:text-muted-foreground hover:bg-brand-50 hover:text-brand-800 transition-colors"
+          className="relative p-2.5 rounded-full text-gray-600 dark:text-muted-foreground hover:bg-[#FDF2F1] hover:text-[#E06B67] transition-colors"
           title="Notificações"
         >
           <Bell className="w-4 h-4 stroke-[1.8]" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-brand-700 rounded-full ring-2 ring-white dark:ring-card"></span>
+          <span className="absolute top-2 right-2 w-2 h-2 bg-[#E06B67] rounded-full ring-2 ring-white dark:ring-card"></span>
         </button>
 
         {/* Light/Dark subtle toggle */}

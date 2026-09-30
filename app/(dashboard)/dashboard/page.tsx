@@ -132,7 +132,7 @@ const MODULES: ModuleItem[] = [
     icon: TrendingUp,
     href: "/reports",
     blobClass: "from-rose-50/50",
-    iconBoxClass: "bg-[#FFF1F2] text-[#9C2A4A] border-[#FFE4E6]",
+    iconBoxClass: "bg-[#FFF1F2] text-[#E06B67] border-[#FFE4E6]",
     shortcut: "F10",
   },
 
@@ -224,10 +224,10 @@ function DashboardContent() {
                 key={cat}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
                   isActive
-                    ? "bg-brand-700 text-white shadow-pill"
-                    : "bg-white dark:bg-card border border-[#F0E6EA] dark:border-border/60 text-luxury-body dark:text-muted-foreground hover:bg-brand-50 hover:text-brand-800"
+                    ? "bg-[#E06B67] text-white shadow-xs"
+                    : "bg-white dark:bg-card border border-gray-200 dark:border-border/60 text-gray-600 dark:text-muted-foreground hover:bg-gray-50 dark:hover:bg-muted/40"
                 }`}
               >
                 {cat}
@@ -237,24 +237,23 @@ function DashboardContent() {
         </div>
 
         {/* Section Title */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#EFE5E9] dark:border-border/50 pb-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-1">
           <div>
-            <div className="flex items-center gap-2 text-brand-700 dark:text-brand-400 text-xs uppercase tracking-[0.2em] font-medium mb-1">
-              <span>Boutique &amp; Gestão</span>
-              <span className="w-1 h-1 rounded-full bg-brand-400"></span>
-              <span>Painel Central</span>
+            <div className="flex items-center gap-3 text-[#E06B67] dark:text-brand-300 text-xs uppercase tracking-wider font-bold mb-1">
+              <span>BOUTIQUE &amp; GESTÃO</span>
+              <span>PAINEL CENTRAL</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-normal text-luxury-title dark:text-foreground tracking-tight font-sans">
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-foreground tracking-tight font-sans">
               Central de Módulos DALA
             </h2>
           </div>
 
           {urlSearch && (
-            <div className="flex items-center gap-2 text-xs text-luxury-muted">
+            <div className="flex items-center gap-2 text-xs text-gray-500">
               <span>Buscando por: &quot;{urlSearch}&quot;</span>
               <button
                 onClick={() => router.push("/dashboard")}
-                className="text-brand-700 hover:underline font-semibold"
+                className="text-[#E06B67] hover:underline font-semibold"
               >
                 Limpar
               </button>
@@ -263,14 +262,14 @@ function DashboardContent() {
         </div>
       </section>
 
-      {/* Modules Cards Grid (Exato Stitch: 3 colunas em desktop, cards brancos com ícone colorido e botão bordeaux) */}
+      {/* Modules Cards Grid */}
       {filteredModules.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-card rounded-2xl border border-dashed border-[#F0E4E8] dark:border-border/60">
-          <Search className="h-10 w-10 text-brand-500 mx-auto mb-3 opacity-60" />
-          <h3 className="font-semibold text-lg text-luxury-title dark:text-foreground">
+        <div className="p-12 text-center bg-white dark:bg-card rounded-2xl border border-dashed border-gray-200 dark:border-border/60">
+          <Search className="h-10 w-10 text-[#E06B67] mx-auto mb-3 opacity-60" />
+          <h3 className="font-semibold text-lg text-gray-900 dark:text-foreground">
             Nenhum módulo encontrado
           </h3>
-          <p className="text-xs text-luxury-muted mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             Não encontramos módulos para os critérios selecionados.
           </p>
           <button
@@ -278,7 +277,7 @@ function DashboardContent() {
               setActiveCategory("Todos os Módulos");
               router.push("/dashboard");
             }}
-            className="mt-4 px-4 py-2 rounded-full bg-brand-700 text-white text-xs font-medium hover:bg-brand-800 transition-colors"
+            className="mt-4 px-4 py-2 rounded-full bg-[#E06B67] text-white text-xs font-semibold hover:bg-[#ce5753] transition-colors"
           >
             Ver todos os módulos
           </button>
