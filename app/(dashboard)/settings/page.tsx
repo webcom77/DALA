@@ -103,21 +103,40 @@ export default function SettingsPage() {
     setIsPinging(true);
     const start = performance.now();
     try {
+      // 1. Testa via rota server-side (livre de bloqueios de CORS/adblocker do navegador)
+      const res = await fetch("/api/system/status", { cache: "no-store" });
+      const elapsed = Math.round(performance.now() - start);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.connected) {
+          setLatency(data.latency || elapsed);
+          setSupabaseStatus("connected");
+          if (showToast) {
+            toast.success(`Supabase Conectado e Operacional! (${data.latency || elapsed}ms)`);
+          }
+          return;
+        }
+      }
+
+      // 2. Fallback: testa consulta direta
       const supabase = createClient();
-      const { error } = await supabase.from("categories").select("id", { count: "exact", head: true });
+      const { error: directErr } = await supabase.from("categories").select("id").limit(1);
+      if (!directErr) {
+        setLatency(elapsed);
+        setSupabaseStatus("connected");
+        if (showToast) toast.success(`Conexão direta ao Supabase ativa! (${elapsed}ms)`);
+      } else {
+        setLatency(elapsed);
+        setSupabaseStatus("error");
+        if (showToast) toast.error("Falha ao comunicar com o Supabase: " + directErr.message);
+      }
+    } catch (err: unknown) {
       const elapsed = Math.round(performance.now() - start);
       setLatency(elapsed);
-
-      if (error && error.code !== "PGRST205") {
-        setSupabaseStatus("error");
-        if (showToast) toast.error("Falha ao comunicar com o Supabase: " + error.message);
-      } else {
-        setSupabaseStatus("connected");
-        if (showToast) toast.success(`Conexão Supabase verificada com sucesso! (${elapsed}ms)`);
-      }
-    } catch {
       setSupabaseStatus("error");
-      if (showToast) toast.error("Erro inesperado ao conectar com o Supabase.");
+      const msg = err instanceof Error ? err.message : "Erro de conexão";
+      if (showToast) toast.error("Erro ao verificar Supabase: " + msg);
     } finally {
       setIsPinging(false);
     }
