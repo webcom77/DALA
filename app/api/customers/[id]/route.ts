@@ -1,14 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { customersStore } from "@/lib/store/customers-store";
 import { customerSchema } from "@/schemas/customer";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       const { data, error } = await supabase.from("customers").select("*").eq("id", id).single();
@@ -50,10 +48,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const d = result.data;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured()) {
       try {
         const supabase = await createClient();
         const updatePayload = {
@@ -81,7 +77,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           .select()
           .single();
 
-        if (!error && updatedCustomer) {
+        if (error) {
+          console.error("Erro ao atualizar cliente no Supabase:", error);
+          return NextResponse.json(
+            { error: `Erro ao atualizar cliente no banco: ${error.message}` },
+            { status: 500 }
+          );
+        }
+
+        if (updatedCustomer) {
           const customerObj = {
             ...updatedCustomer,
             address: {
@@ -106,8 +110,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
           return NextResponse.json({ customer: customerObj });
         }
-      } catch {
-        // Fallback
+      } catch (err: unknown) {
+        console.error("Exceção ao atualizar cliente no Supabase:", err);
+        const msg = err instanceof Error ? err.message : "Erro desconhecido ao atualizar cliente.";
+        return NextResponse.json({ error: msg }, { status: 500 });
       }
     }
 
@@ -139,19 +145,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       const { error } = await supabase.from("customers").delete().eq("id", id);
-      if (!error) {
-        customersStore.deleteCustomer(id);
-        return NextResponse.json({ success: true });
+      if (error) {
+        console.error("Erro ao deletar cliente no Supabase:", error);
+        return NextResponse.json(
+          { error: `Erro ao deletar cliente no banco: ${error.message}` },
+          { status: 500 }
+        );
       }
-    } catch {
-      // Fallback
+      customersStore.deleteCustomer(id);
+      return NextResponse.json({ success: true });
+    } catch (err: unknown) {
+      console.error("Exceção ao deletar cliente no Supabase:", err);
+      const msg = err instanceof Error ? err.message : "Erro desconhecido ao deletar cliente.";
+      return NextResponse.json({ error: msg }, { status: 500 });
     }
   }
 

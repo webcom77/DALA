@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { productsStore } from "@/lib/store/products-store";
 import { productFormSchema } from "@/schemas/product";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,10 +10,7 @@ export async function GET(request: NextRequest) {
   const activeParam = searchParams.get("active");
   const active = activeParam !== null ? activeParam === "true" : undefined;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
-
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       let query = supabase
@@ -47,10 +44,21 @@ export async function GET(request: NextRequest) {
             ean13: v.barcode || v.sku_variant,
           })),
         }));
+
+        // Mantém store sincronizado
+        try {
+          mapped.forEach((prod) => productsStore.createProduct(prod as any));
+        } catch {
+          // Ignore
+        }
+
         return NextResponse.json({ products: mapped });
       }
-    } catch {
-      // Fallback
+      if (error) {
+        console.error("Erro ao listar produtos no Supabase:", error);
+      }
+    } catch (err) {
+      console.error("Exceção ao listar produtos no Supabase:", err);
     }
   }
 
@@ -71,12 +79,9 @@ export async function POST(request: NextRequest) {
     }
 
     const data = result.data;
-
     const eanCode = data.ean13 || data.sku || "";
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured()) {
       try {
         const supabase = await createClient();
 
@@ -95,16 +100,28 @@ export async function POST(request: NextRequest) {
         }
 
         let newProd: any = null;
-        const res = await supabase.from("products").insert(prodPayload).select().single();
+        let res = await supabase.from("products").insert(prodPayload).select().single();
 
         if (res.error && (res.error.code === "42703" || res.error.code === "PGRST204" || res.error.message?.includes("image_url"))) {
-          // Coluna image_url ainda não existe no Postgres do Supabase, tenta sem ela
           delete prodPayload.image_url;
-          const retry = await supabase.from("products").insert(prodPayload).select().single();
-          newProd = retry.data;
-        } else if (!res.error) {
-          newProd = res.data;
+          res = await supabase.from("products").insert(prodPayload).select().single();
         }
+
+        if (res.error) {
+          console.error("Erro ao inserir produto no Supabase:", res.error);
+          if (res.error.code === "23505") {
+            return NextResponse.json(
+              { error: "Já existe uma peça cadastrada com este código EAN-13. Por favor, gere ou informe outro código." },
+              { status: 409 }
+            );
+          }
+          return NextResponse.json(
+            { error: `Erro no banco de dados: ${res.error.message}` },
+            { status: 500 }
+          );
+        }
+
+        newProd = res.data;
 
         if (newProd) {
           // Insere as variações de grade com código EAN-13
@@ -125,30 +142,44 @@ export async function POST(request: NextRequest) {
             .insert(variantsToInsert)
             .select();
 
-          if (!varErr) {
-            const finalProduct = {
-              ...newProd,
-              ean13: newProd.sku,
-              image_url: data.image_url || newProd.image_url || null,
-              variants: createdVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
-              variants_count: createdVariants?.length || 0,
-            };
-
-            // Mantém o store local em sincronia
-            try {
-              productsStore.createProduct(finalProduct as any);
-            } catch {
-              // Ignore
+          if (varErr) {
+            console.error("Erro ao inserir variações no Supabase:", varErr);
+            if (varErr.code === "23505") {
+              return NextResponse.json(
+                { error: "Uma das variações da grade possui código EAN-13 duplicado. Regenere os códigos da grade." },
+                { status: 409 }
+              );
             }
-
             return NextResponse.json(
-              { product: finalProduct },
-              { status: 201 }
+              { error: `Erro ao salvar variações da grade: ${varErr.message}` },
+              { status: 500 }
             );
           }
+
+          const finalProduct = {
+            ...newProd,
+            ean13: newProd.sku,
+            image_url: data.image_url || newProd.image_url || null,
+            variants: createdVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
+            variants_count: createdVariants?.length || 0,
+          };
+
+          // Mantém o store local em sincronia
+          try {
+            productsStore.createProduct(finalProduct as any);
+          } catch {
+            // Ignore
+          }
+
+          return NextResponse.json(
+            { product: finalProduct },
+            { status: 201 }
+          );
         }
-      } catch {
-        // Prossegue para o store local
+      } catch (err: unknown) {
+        console.error("Exceção ao inserir produto no Supabase:", err);
+        const msg = err instanceof Error ? err.message : "Erro desconhecido ao salvar produto.";
+        return NextResponse.json({ error: msg }, { status: 500 });
       }
     }
 

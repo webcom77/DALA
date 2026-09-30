@@ -1,17 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { customersStore } from "@/lib/store/customers-store";
 import { customerSchema } from "@/schemas/customer";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || undefined;
   const filter = (searchParams.get("filter") || "all") as "all" | "with_debt" | "overdue" | "no_debt";
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
-
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       let query = supabase.from("customers").select("*").order("name", { ascending: true });
@@ -58,8 +55,11 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ customers: filtered });
       }
-    } catch {
-      // Fallback
+      if (error) {
+        console.error("Erro ao listar clientes no Supabase:", error);
+      }
+    } catch (err) {
+      console.error("Exceção ao listar clientes no Supabase:", err);
     }
   }
 
@@ -76,10 +76,8 @@ export async function POST(request: NextRequest) {
     }
 
     const d = result.data;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured()) {
       try {
         const supabase = await createClient();
         const dbPayload = {
@@ -106,7 +104,15 @@ export async function POST(request: NextRequest) {
           .select()
           .single();
 
-        if (!error && newCustomer) {
+        if (error) {
+          console.error("Erro ao inserir cliente no Supabase:", error);
+          return NextResponse.json(
+            { error: `Erro ao salvar cliente no banco de dados: ${error.message}` },
+            { status: 500 }
+          );
+        }
+
+        if (newCustomer) {
           const customerObj = {
             ...newCustomer,
             address: {
@@ -131,8 +137,10 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({ customer: customerObj }, { status: 201 });
         }
-      } catch {
-        // Fallback
+      } catch (err: unknown) {
+        console.error("Exceção ao inserir cliente no Supabase:", err);
+        const msg = err instanceof Error ? err.message : "Erro desconhecido ao salvar cliente.";
+        return NextResponse.json({ error: msg }, { status: 500 });
       }
     }
 
@@ -157,6 +165,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ customer: created }, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Erro ao cadastrar cliente." }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno ao cadastrar cliente." }, { status: 500 });
   }
 }

@@ -1,16 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { suppliersStore } from "@/lib/store/suppliers-store";
 import { supplierSchema } from "@/schemas/supplier";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") || undefined;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
-
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       let query = supabase.from("suppliers").select("*").order("trade_name", { ascending: true });
@@ -20,7 +17,9 @@ export async function GET(request: NextRequest) {
       }
 
       const { data, error } = await query;
-      if (!error && data) {
+      if (error) {
+        console.error("Supabase GET suppliers error:", error);
+      } else if (data) {
         const mapped = data.map((s: any) => ({
           ...s,
           address: {
@@ -34,8 +33,8 @@ export async function GET(request: NextRequest) {
         }));
         return NextResponse.json({ suppliers: mapped });
       }
-    } catch {
-      // Fallback
+    } catch (e) {
+      console.error("Supabase connection error in suppliers:", e);
     }
   }
 
@@ -52,10 +51,8 @@ export async function POST(request: NextRequest) {
     }
 
     const d = result.data;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured()) {
       try {
         const supabase = await createClient();
         const dbPayload = {
@@ -82,7 +79,15 @@ export async function POST(request: NextRequest) {
           .select()
           .single();
 
-        if (!error && newSupplier) {
+        if (error) {
+          console.error("Supabase supplier insert error:", error);
+          return NextResponse.json(
+            { error: `Erro no Supabase ao salvar fornecedor: ${error.message}` },
+            { status: 500 }
+          );
+        }
+
+        if (newSupplier) {
           const supplierObj = {
             ...newSupplier,
             address: {
@@ -96,8 +101,12 @@ export async function POST(request: NextRequest) {
           };
           return NextResponse.json({ supplier: supplierObj }, { status: 201 });
         }
-      } catch {
-        // Fallback
+      } catch (err: any) {
+        console.error("Supabase connection exception in POST suppliers:", err);
+        return NextResponse.json(
+          { error: `Falha de conexão com o banco: ${err?.message || "Erro desconhecido"}` },
+          { status: 500 }
+        );
       }
     }
 

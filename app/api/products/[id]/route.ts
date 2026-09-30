@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { productsStore } from "@/lib/store/products-store";
 import { productFormSchema } from "@/schemas/product";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(
   _request: NextRequest,
@@ -9,10 +9,7 @@ export async function GET(
 ) {
   const { id } = params;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
-
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       const { data, error } = await supabase
@@ -70,12 +67,9 @@ export async function PUT(
     }
 
     const data = result.data;
-
     const eanCode = data.ean13 || data.sku || "";
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured()) {
       try {
         const supabase = await createClient();
 
@@ -94,15 +88,28 @@ export async function PUT(
         }
 
         let updatedProd: any = null;
-        const res = await supabase.from("products").update(updatePayload).eq("id", id).select().single();
+        let res = await supabase.from("products").update(updatePayload).eq("id", id).select().single();
 
         if (res.error && (res.error.code === "42703" || res.error.code === "PGRST204" || res.error.message?.includes("image_url"))) {
           delete updatePayload.image_url;
-          const retry = await supabase.from("products").update(updatePayload).eq("id", id).select().single();
-          updatedProd = retry.data;
-        } else if (!res.error) {
-          updatedProd = res.data;
+          res = await supabase.from("products").update(updatePayload).eq("id", id).select().single();
         }
+
+        if (res.error) {
+          console.error("Erro ao atualizar produto no Supabase:", res.error);
+          if (res.error.code === "23505") {
+            return NextResponse.json(
+              { error: "Já existe outra peça com este código EAN-13 cadastrado." },
+              { status: 409 }
+            );
+          }
+          return NextResponse.json(
+            { error: `Erro no banco de dados: ${res.error.message}` },
+            { status: 500 }
+          );
+        }
+
+        updatedProd = res.data;
 
         if (updatedProd) {
           // Atualiza variações: remove as antigas e insere com código EAN-13
@@ -120,23 +127,39 @@ export async function PUT(
             };
           });
 
-          const { data: insertedVariants } = await supabase
+          const { data: insertedVariants, error: varErr } = await supabase
             .from("product_variants")
             .insert(variantsToInsert)
             .select();
 
-          return NextResponse.json({
-            product: {
-              ...updatedProd,
-              ean13: updatedProd.sku,
-              image_url: data.image_url !== undefined ? data.image_url : updatedProd.image_url,
-              variants: insertedVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
-              variants_count: insertedVariants?.length || 0,
-            },
-          });
+          if (varErr) {
+            console.error("Erro ao atualizar variações no Supabase:", varErr);
+            return NextResponse.json(
+              { error: `Erro ao atualizar variações da grade: ${varErr.message}` },
+              { status: 500 }
+            );
+          }
+
+          const finalProduct = {
+            ...updatedProd,
+            ean13: updatedProd.sku,
+            image_url: data.image_url !== undefined ? data.image_url : updatedProd.image_url,
+            variants: insertedVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
+            variants_count: insertedVariants?.length || 0,
+          };
+
+          try {
+            productsStore.updateProduct(id, finalProduct as any);
+          } catch {
+            // Ignore
+          }
+
+          return NextResponse.json({ product: finalProduct });
         }
-      } catch {
-        // Fallback
+      } catch (err: unknown) {
+        console.error("Exceção ao atualizar produto no Supabase:", err);
+        const msg = err instanceof Error ? err.message : "Erro desconhecido ao atualizar produto.";
+        return NextResponse.json({ error: msg }, { status: 500 });
       }
     }
 
@@ -174,7 +197,7 @@ export async function PUT(
     return NextResponse.json({ product: updated });
   } catch {
     return NextResponse.json(
-      { error: "Erro ao atualizar produto." },
+      { error: "Erro interno ao atualizar produto." },
       { status: 500 }
     );
   }
@@ -186,18 +209,23 @@ export async function DELETE(
 ) {
   const { id } = params;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
-
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       const { error } = await supabase.from("products").delete().eq("id", id);
-      if (!error) {
-        return NextResponse.json({ success: true });
+      if (error) {
+        console.error("Erro ao deletar produto no Supabase:", error);
+        return NextResponse.json(
+          { error: `Erro ao excluir produto no banco: ${error.message}` },
+          { status: 500 }
+        );
       }
-    } catch {
-      // Fallback
+      productsStore.deleteProduct(id);
+      return NextResponse.json({ success: true });
+    } catch (err: unknown) {
+      console.error("Exceção ao excluir produto no Supabase:", err);
+      const msg = err instanceof Error ? err.message : "Erro desconhecido ao excluir produto.";
+      return NextResponse.json({ error: msg }, { status: 500 });
     }
   }
 

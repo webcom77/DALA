@@ -1,14 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { suppliersStore } from "@/lib/store/suppliers-store";
 import { supplierSchema } from "@/schemas/supplier";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       const { data, error } = await supabase.from("suppliers").select("*").eq("id", id).single();
@@ -46,10 +44,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const d = result.data;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseConfigured()) {
       try {
         const supabase = await createClient();
         const updatePayload = {
@@ -77,7 +73,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           .select()
           .single();
 
-        if (!error && updatedSupplier) {
+        if (error) {
+          return NextResponse.json({ error: `Erro no Supabase: ${error.message}` }, { status: 500 });
+        }
+
+        if (updatedSupplier) {
           const supplierObj = {
             ...updatedSupplier,
             address: {
@@ -91,8 +91,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           };
           return NextResponse.json({ supplier: supplierObj });
         }
-      } catch {
-        // Fallback
+      } catch (err: any) {
+        return NextResponse.json({ error: `Falha no banco: ${err?.message}` }, { status: 500 });
       }
     }
 
@@ -125,19 +125,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       const { error } = await supabase.from("suppliers").delete().eq("id", id);
-      if (!error) {
-        suppliersStore.deleteSupplier(id);
-        return NextResponse.json({ success: true });
+      if (error) {
+        return NextResponse.json({ error: `Erro no Supabase: ${error.message}` }, { status: 500 });
       }
-    } catch {
-      // Fallback
+      suppliersStore.deleteSupplier(id);
+      return NextResponse.json({ success: true });
+    } catch (err: any) {
+      return NextResponse.json({ error: `Falha no banco: ${err?.message}` }, { status: 500 });
     }
   }
 
