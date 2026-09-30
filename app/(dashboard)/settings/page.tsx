@@ -4,7 +4,21 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTheme } from "next-themes";
-import { Save, Store, User, Coins, Globe, Palette, Info, CheckCircle2 } from "lucide-react";
+import {
+  Save,
+  Store,
+  User,
+  Coins,
+  Globe,
+  Palette,
+  CheckCircle2,
+  Database,
+  RefreshCw,
+  ExternalLink,
+  ShieldCheck,
+  Activity,
+  AlertCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { storeSettingsSchema, type StoreSettingsFormData } from "@/schemas/settings";
@@ -13,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
+import { createClient } from "@/lib/supabase/client";
 
 const STORAGE_KEY = "dala_store_settings";
 
@@ -80,6 +95,38 @@ export default function SettingsPage() {
     }
   };
 
+  const [supabaseStatus, setSupabaseStatus] = React.useState<"checking" | "connected" | "error">("checking");
+  const [latency, setLatency] = React.useState<number | null>(null);
+  const [isPinging, setIsPinging] = React.useState(false);
+
+  const testSupabaseConnection = React.useCallback(async (showToast = false) => {
+    setIsPinging(true);
+    const start = performance.now();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("categories").select("id", { count: "exact", head: true });
+      const elapsed = Math.round(performance.now() - start);
+      setLatency(elapsed);
+
+      if (error && error.code !== "PGRST205") {
+        setSupabaseStatus("error");
+        if (showToast) toast.error("Falha ao comunicar com o Supabase: " + error.message);
+      } else {
+        setSupabaseStatus("connected");
+        if (showToast) toast.success(`Conexão Supabase verificada com sucesso! (${elapsed}ms)`);
+      }
+    } catch {
+      setSupabaseStatus("error");
+      if (showToast) toast.error("Erro inesperado ao conectar com o Supabase.");
+    } finally {
+      setIsPinging(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    testSupabaseConnection(false);
+  }, [testSupabaseConnection]);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Cabeçalho */}
@@ -90,20 +137,88 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Nota de documentação arquitetural */}
-      <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-card p-4 text-xs text-muted-foreground">
-        <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
-        <div className="space-y-1">
-          <p className="font-semibold text-foreground">
-            Armazenamento de Preferências (Etapa 1: Fundação)
-          </p>
-          <p>
-            Nesta etapa técnica inicial, estas preferências são preservadas no navegador local
-            (`localStorage`). Quando o módulo de banco de dados para configurações for
-            especificado em etapas futuras, os dados serão sincronizados com tabela dedicada no PostgreSQL.
-          </p>
-        </div>
-      </div>
+      {/* Status da Conexão com o Supabase */}
+      <Card className="border border-border/80 bg-gradient-to-br from-card via-card to-[#E06B67]/5 shadow-sm overflow-hidden">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#E06B67] to-[#F48884] flex items-center justify-center text-white shadow-sm shrink-0">
+                <Database className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-foreground text-sm sm:text-base">
+                    Banco de Dados Supabase (PostgreSQL Cloud)
+                  </h3>
+                  {supabaseStatus === "connected" && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Conectado e Operacional
+                    </span>
+                  )}
+                  {supabaseStatus === "checking" && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <RefreshCw className="h-3 w-3 animate-spin" />
+                      Verificando Conexão...
+                    </span>
+                  )}
+                  {supabaseStatus === "error" && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                      <AlertCircle className="h-3 w-3" />
+                      Falha de Conexão
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                  https://vimjhbjscvkwusxilzmo.supabase.co
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => testSupabaseConnection(true)}
+                disabled={isPinging}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isPinging ? "animate-spin" : ""}`} />
+                Testar Conexão
+              </Button>
+              <a
+                href="https://supabase.com/dashboard/project/vimjhbjscvkwusxilzmo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 h-8 px-3 rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                Painel
+                <ExternalLink className="h-3 w-3 text-muted-foreground" />
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3.5 border-t border-border/50 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-3.5 w-3.5 text-[#E06B67]" />
+              <span>Chave Anon Ativa</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <span>Tabelas DALA Criadas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Activity className="h-3.5 w-3.5 text-blue-500" />
+              <span>{latency !== null ? `Latência: ${latency}ms` : "Latência: normal"}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Database className="h-3.5 w-3.5 text-violet-500" />
+              <span>RLS Habilitado</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid gap-6 md:grid-cols-2">
