@@ -43,6 +43,17 @@ export const posService = {
     }
   },
 
+  async getSessionHistory(): Promise<CashSession[]> {
+    try {
+      const res = await fetch("/api/pos/session?history=true", { cache: "no-store" });
+      if (!res.ok) return [];
+      const d = await res.json();
+      return d.sessions || [];
+    } catch {
+      return [];
+    }
+  },
+
   async checkoutSale(data: CheckoutSaleFormData): Promise<{ sale: Sale | null; error: string | null }> {
     try {
       const res = await fetch("/api/pos/checkout", {

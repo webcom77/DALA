@@ -63,6 +63,15 @@ export const posStore = {
     return closed;
   },
 
+  syncSession(session: CashSession | null) {
+    global.__DALA_CASH_SESSION__ = session;
+  },
+
+  getSessionHistory(): CashSession[] {
+    const active = global.__DALA_CASH_SESSION__;
+    return active ? [active] : [];
+  },
+
   getSales(): Sale[] {
     return global.__DALA_SALES__ || INITIAL_SALES;
   },
