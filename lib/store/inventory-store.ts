@@ -41,13 +41,11 @@ export const inventoryStore = {
 
     prods.forEach((p) => {
       (p.variants || []).forEach((v) => {
-        const item = stockMap.get(v.id) || { current: 5, min: 2 };
+        const item = stockMap.get(v.id) || { current: 0, min: 0 };
         let status: "normal" | "low" | "out_of_stock" = "normal";
 
         if (item.current <= 0) {
           status = "out_of_stock";
-        } else if (item.current <= item.min) {
-          status = "low";
         }
 
         result.push({

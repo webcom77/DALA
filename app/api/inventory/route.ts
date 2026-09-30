@@ -14,31 +14,52 @@ export async function GET(request: NextRequest) {
     try {
       const supabase = await createClient();
 
-      let prodQuery = supabase
-        .from("products")
-        .select(`
-          id,
-          name,
-          sku,
-          cost_price,
-          sale_price,
-          category:categories(name),
-          variants:product_variants(id, size, color, sku_variant)
-        `)
-        .order("name", { ascending: true });
+      // Busca todos os produtos com paginação (limite de 1000 do PostgREST)
+      let allProds: any[] = [];
+      let page = 0;
+      while (true) {
+        let q = supabase
+          .from("products")
+          .select(`
+            id,
+            name,
+            sku,
+            cost_price,
+            sale_price,
+            category:categories(name),
+            variants:product_variants(id, size, color, sku_variant)
+          `)
+          .order("name", { ascending: true })
+          .range(page * 1000, (page + 1) * 1000 - 1);
 
-      if (search) {
-        prodQuery = prodQuery.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+        if (search) {
+          q = q.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+        }
+
+        const { data: pageProds, error: pErr } = await q;
+        if (pErr || !pageProds || pageProds.length === 0) break;
+        allProds = allProds.concat(pageProds);
+        if (pageProds.length < 1000) break;
+        page++;
       }
 
-      const [{ data: prods, error: prodErr }, { data: movs }] = await Promise.all([
-        prodQuery,
-        supabase.from("stock_movements").select("variant_id, type, quantity"),
-      ]);
+      // Busca todas as movimentações de estoque
+      let allMovs: any[] = [];
+      let mPage = 0;
+      while (true) {
+        const { data: pageMovs, error: mErr } = await supabase
+          .from("stock_movements")
+          .select("variant_id, type, quantity")
+          .range(mPage * 1000, (mPage + 1) * 1000 - 1);
+        if (mErr || !pageMovs || pageMovs.length === 0) break;
+        allMovs = allMovs.concat(pageMovs);
+        if (pageMovs.length < 1000) break;
+        mPage++;
+      }
 
-      if (!prodErr && prods) {
+      if (allProds.length > 0) {
         const stockMap = new Map<string, number>();
-        (movs || []).forEach((m: any) => {
+        allMovs.forEach((m: any) => {
           const cur = stockMap.get(m.variant_id) || 0;
           if (m.type === "entry" || m.type === "purchase") {
             stockMap.set(m.variant_id, cur + Number(m.quantity || 0));
@@ -50,15 +71,11 @@ export async function GET(request: NextRequest) {
         });
 
         const list: StockLevel[] = [];
-        prods.forEach((p: any) => {
+        allProds.forEach((p: any) => {
           (p.variants || []).forEach((v: any) => {
             const current = stockMap.get(v.id) || 0;
-            let itemStatus: "normal" | "low" | "out_of_stock" = "normal";
-            if (current <= 0) {
-              itemStatus = "out_of_stock";
-            } else if (current <= 2) {
-              itemStatus = "low";
-            }
+            const itemStatus: "normal" | "low" | "out_of_stock" =
+              current <= 0 ? "out_of_stock" : "normal";
 
             if (status && status !== "all" && itemStatus !== status) {
               return;
@@ -73,7 +90,7 @@ export async function GET(request: NextRequest) {
               size: v.size,
               color: v.color,
               current_stock: current,
-              min_stock: 2,
+              min_stock: 0,
               cost_price: Number(p.cost_price || 0),
               sale_price: Number(p.sale_price || 0),
               status: itemStatus,

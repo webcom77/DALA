@@ -115,7 +115,7 @@ export default function InventoryPage() {
   const totalPieces = stockLevels.reduce((acc, it) => acc + it.current_stock, 0);
   const totalCostValue = stockLevels.reduce((acc, it) => acc + it.current_stock * it.cost_price, 0);
   const totalSaleValue = stockLevels.reduce((acc, it) => acc + it.current_stock * it.sale_price, 0);
-  const lowStockCount = stockLevels.filter((it) => it.status === "low" || it.status === "out_of_stock").length;
+  const outOfStockCount = stockLevels.filter((it) => it.current_stock === 0).length;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -124,7 +124,7 @@ export default function InventoryPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Controle de Estoque</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Saldos físicos, reposição por tamanho e cor, e histórico de movimentações.
+            Saldos físicos por peça, tamanho e cor, e histórico de movimentações.
           </p>
         </div>
 
@@ -161,7 +161,7 @@ export default function InventoryPage() {
             <CardDescription className="text-xs">Total de Peças Físicas</CardDescription>
             <CardTitle className="text-2xl font-bold">{totalPieces} un</CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">Distribuídas por grade</CardContent>
+          <CardContent className="text-xs text-muted-foreground">Distribuídas em estoque</CardContent>
         </Card>
 
         <Card className="shadow-sm">
@@ -182,17 +182,17 @@ export default function InventoryPage() {
           <CardContent className="text-xs text-muted-foreground">Preço de etiqueta em estoque</CardContent>
         </Card>
 
-        <Card className={`shadow-sm ${lowStockCount > 0 ? "border-amber-500/40 bg-amber-500/5" : ""}`}>
+        <Card className={`shadow-sm ${outOfStockCount > 0 ? "border-rose-500/40 bg-rose-500/5" : ""}`}>
           <CardHeader className="pb-2">
             <CardDescription className="text-xs flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-              Alertas de Estoque
+              <XCircle className="h-3.5 w-3.5 text-rose-500" />
+              Itens Esgotados
             </CardDescription>
-            <CardTitle className={`text-2xl font-bold ${lowStockCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
-              {lowStockCount} {lowStockCount === 1 ? "peça" : "peças"}
+            <CardTitle className={`text-2xl font-bold ${outOfStockCount > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>
+              {outOfStockCount} {outOfStockCount === 1 ? "peça" : "peças"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">Abaixo do ponto de pedido</CardContent>
+          <CardContent className="text-xs text-muted-foreground">Saldo zerado no catálogo</CardContent>
         </Card>
       </div>
 
@@ -218,9 +218,8 @@ export default function InventoryPage() {
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
                   >
-                    <option value="all">Todos os Saldos</option>
-                    <option value="normal">Estoque Normal (&gt; mín)</option>
-                    <option value="low">Estoque Baixo (&le; mín)</option>
+                    <option value="all">Todos os Produtos</option>
+                    <option value="normal">Em Estoque (&gt; 0)</option>
                     <option value="out_of_stock">Esgotado (Zero)</option>
                   </select>
                 </div>
@@ -238,7 +237,6 @@ export default function InventoryPage() {
                     <th className="px-4 py-3 text-center">Tamanho</th>
                     <th className="px-4 py-3">Cor</th>
                     <th className="px-4 py-3 text-center">Saldo Atual</th>
-                    <th className="px-4 py-3 text-center">Estoque Mínimo</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Ação</th>
                   </tr>
@@ -246,14 +244,14 @@ export default function InventoryPage() {
                 <tbody className="divide-y">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                         <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
                         Carregando estoque...
                       </td>
                     </tr>
                   ) : stockLevels.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                      <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                         Nenhum item localizado com os filtros aplicados.
                       </td>
                     </tr>
@@ -279,25 +277,16 @@ export default function InventoryPage() {
                             className={`text-base font-bold ${
                               it.current_stock === 0
                                 ? "text-destructive"
-                                : it.current_stock <= it.min_stock
-                                ? "text-amber-600 dark:text-amber-400"
                                 : "text-foreground"
                             }`}
                           >
                             {it.current_stock}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-center text-xs text-muted-foreground">
-                          {it.min_stock}
-                        </td>
                         <td className="px-4 py-3">
-                          {it.status === "normal" && (
-                            <Badge variant="success">Normal</Badge>
-                          )}
-                          {it.status === "low" && (
-                            <Badge variant="warning">Baixo</Badge>
-                          )}
-                          {it.status === "out_of_stock" && (
+                          {it.current_stock > 0 ? (
+                            <Badge variant="success">Em Estoque</Badge>
+                          ) : (
                             <Badge variant="destructive">Esgotado</Badge>
                           )}
                         </td>
