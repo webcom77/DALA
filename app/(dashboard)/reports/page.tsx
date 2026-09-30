@@ -318,7 +318,7 @@ export default function ReportsPage() {
                       <tr>
                         <th className="py-3 px-4">Posição</th>
                         <th className="py-3 px-4">Peça / Produto</th>
-                        <th className="py-3 px-4">SKU da Variação</th>
+                        <th className="py-3 px-4">Código EAN-13</th>
                         <th className="py-3 px-4 text-center">Tamanho</th>
                         <th className="py-3 px-4 text-center">Cor</th>
                         <th className="py-3 px-4 text-center">Peças Vendidas</th>

@@ -89,7 +89,13 @@ export const productsStore = {
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.sku.toLowerCase().includes(q) ||
-          p.variants?.some((v) => v.sku_variant.toLowerCase().includes(q))
+          (p.ean13 && p.ean13.toLowerCase().includes(q)) ||
+          p.variants?.some(
+            (v) =>
+              v.sku_variant.toLowerCase().includes(q) ||
+              (v.ean13 && v.ean13.toLowerCase().includes(q)) ||
+              (v.barcode && v.barcode.toLowerCase().includes(q))
+          )
       );
     }
 
@@ -133,8 +139,9 @@ export const productsStore = {
       product_id: newId,
       size: v.size,
       color: v.color,
-      sku_variant: v.sku_variant,
-      barcode: v.barcode || null,
+      sku_variant: v.sku_variant || v.ean13 || `EAN-${Date.now()}-${idx}`,
+      ean13: v.ean13 || v.barcode || v.sku_variant || null,
+      barcode: v.barcode || v.ean13 || null,
       active: v.active ?? true,
       created_at: now,
       updated_at: now,
@@ -143,6 +150,9 @@ export const productsStore = {
     const newProduct: Product = {
       ...data,
       id: newId,
+      sku: data.sku || data.ean13 || `EAN-${Date.now()}`,
+      ean13: data.ean13 || data.sku || null,
+      image_url: data.image_url || null,
       created_at: now,
       updated_at: now,
       variants,
@@ -175,8 +185,9 @@ export const productsStore = {
         product_id: id,
         size: v.size,
         color: v.color,
-        sku_variant: v.sku_variant,
-        barcode: v.barcode || null,
+        sku_variant: v.sku_variant || v.ean13 || `EAN-${Date.now()}-${vIdx}`,
+        ean13: v.ean13 || v.barcode || v.sku_variant || null,
+        barcode: v.barcode || v.ean13 || null,
         active: v.active ?? true,
         created_at: v.created_at || now,
         updated_at: now,
@@ -187,6 +198,9 @@ export const productsStore = {
       ...existing,
       ...data,
       id,
+      sku: data.sku || data.ean13 || existing.sku,
+      ean13: data.ean13 || data.sku || existing.ean13 || existing.sku,
+      image_url: data.image_url !== undefined ? data.image_url : existing.image_url,
       updated_at: now,
       variants: updatedVariants,
       variants_count: updatedVariants.length,

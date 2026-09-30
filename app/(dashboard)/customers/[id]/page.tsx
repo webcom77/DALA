@@ -554,7 +554,7 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
                           <tr key={idx} className="hover:bg-muted/20">
                             <td className="py-2 font-medium text-luxury-title">
                               {item.product_name}
-                              <span className="block text-[10px] font-mono text-luxury-muted">{item.sku_variant}</span>
+                              <span className="block text-[10px] font-mono text-luxury-muted">EAN: {item.sku_variant}</span>
                             </td>
                             <td className="py-2">
                               <span className="px-1.5 py-0.5 rounded bg-muted/60 text-[10px] font-semibold">

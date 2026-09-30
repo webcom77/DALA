@@ -16,6 +16,7 @@ import {
   Layers,
   ArrowUpDown,
   RefreshCw,
+  Barcode,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -153,7 +154,7 @@ export default function ProductsPage() {
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, referência ou SKU..."
+                placeholder="Buscar por nome da peça ou código EAN-13..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
@@ -206,7 +207,7 @@ export default function ProductsPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-muted/50 border-b text-xs font-semibold uppercase text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Peça / Referência</th>
+                <th className="px-4 py-3">Peça & Código EAN-13</th>
                 <th className="px-4 py-3">Categoria</th>
                 <th className="px-4 py-3">Preço Venda</th>
                 <th className="px-4 py-3">Preço Custo</th>
@@ -251,15 +252,29 @@ export default function ProductsPage() {
                       key={product.id}
                       className="hover:bg-muted/30 transition-colors group"
                     >
-                      {/* Peça e SKU */}
+                      {/* Peça, Foto e EAN-13 */}
                       <td className="px-4 py-3">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                            {product.name}
-                          </span>
-                          <span className="text-xs text-muted-foreground font-mono mt-0.5">
-                            REF: {product.sku}
-                          </span>
+                        <div className="flex items-center gap-3">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="h-11 w-11 rounded-lg object-cover border border-border shadow-xs shrink-0"
+                            />
+                          ) : (
+                            <div className="h-11 w-11 rounded-lg bg-muted flex items-center justify-center text-muted-foreground border border-border/60 shrink-0">
+                              <Shirt className="h-5 w-5 opacity-60 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                              {product.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground font-mono mt-0.5 flex items-center gap-1">
+                              <Barcode className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                              EAN-13: {product.ean13 || product.sku}
+                            </span>
+                          </div>
                         </div>
                       </td>
 

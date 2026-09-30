@@ -23,6 +23,7 @@ import {
   Shirt,
   FileText,
   Calendar,
+  Barcode,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -143,8 +144,11 @@ export default function PosPage() {
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.sku.toLowerCase().includes(q) ||
+          (p.ean13 && p.ean13.toLowerCase().includes(q)) ||
           p.variants?.some(
             (v) =>
+              (v.ean13 && v.ean13.toLowerCase().includes(q)) ||
+              (v.barcode && v.barcode.toLowerCase().includes(q)) ||
               v.sku_variant.toLowerCase().includes(q) ||
               v.color.toLowerCase().includes(q) ||
               v.size.toLowerCase().includes(q)
@@ -489,7 +493,7 @@ export default function PosPage() {
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
-                placeholder="Pesquisar por nome da peça, SKU ou variação..."
+                placeholder="Pesquisar por nome da peça ou código EAN-13..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-10 bg-gray-50 border-gray-200 focus:bg-white text-sm"
@@ -560,17 +564,26 @@ export default function PosPage() {
                       }`}
                     >
                       <div>
-                        {/* Garment Image Placeholder or Thumbnail */}
-                        <div className="aspect-square w-full rounded-lg bg-gray-100 flex items-center justify-center mb-2.5 overflow-hidden group-hover:bg-gray-50 transition-colors">
-                          <Shirt className="w-8 h-8 text-gray-400 group-hover:scale-110 transition-transform" />
+                        {/* Garment Image or Thumbnail */}
+                        <div className="aspect-square w-full rounded-lg bg-gray-100 flex items-center justify-center mb-2.5 overflow-hidden group-hover:bg-gray-50 transition-colors relative">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                          ) : (
+                            <Shirt className="w-8 h-8 text-gray-400 group-hover:scale-110 transition-transform" />
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className="text-[10px] font-mono font-medium text-gray-500 uppercase">
-                            {product.sku}
+                          <span className="text-[10px] font-mono font-medium text-gray-500 uppercase flex items-center gap-1">
+                            <Barcode className="w-3 h-3 text-gray-400" />
+                            {product.ean13 || product.sku}
                           </span>
                           {product.category?.name && (
-                            <span className="text-[10px] text-gray-400">• {product.category.name}</span>
+                            <span className="text-[10px] text-gray-400 truncate">• {product.category.name}</span>
                           )}
                         </div>
 
@@ -878,7 +891,10 @@ export default function PosPage() {
                         </span>
                         <div>
                           <p className="text-xs font-bold text-gray-900">{v.color}</p>
-                          <p className="text-[10px] text-gray-500 font-mono">{v.sku_variant}</p>
+                          <p className="text-[10px] text-gray-500 font-mono flex items-center gap-1">
+                            <Barcode className="w-2.5 h-2.5" />
+                            {v.barcode || v.sku_variant}
+                          </p>
                         </div>
                       </div>
 

@@ -14,6 +14,7 @@ export interface ProductVariant {
   size: string;
   color: string;
   sku_variant: string;
+  ean13?: string | null;
   barcode?: string | null;
   active: boolean;
   created_at: string;
@@ -23,6 +24,8 @@ export interface ProductVariant {
 export interface Product {
   id: string;
   sku: string;
+  ean13?: string | null;
+  image_url?: string | null;
   name: string;
   category_id?: string | null;
   cost_price: number;

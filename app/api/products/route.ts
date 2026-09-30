@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
 
     const data = result.data;
 
+    const eanCode = data.ean13 || data.sku || "";
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const isSupabaseConfigured = supabaseUrl && !supabaseUrl.includes("your-project.supabase.co");
 
@@ -73,51 +74,65 @@ export async function POST(request: NextRequest) {
       try {
         const supabase = await createClient();
 
-        // Insere o produto
-        const { data: newProd, error: prodErr } = await supabase
-          .from("products")
-          .insert({
-            name: data.name,
-            sku: data.sku.toUpperCase(),
-            category_id: data.category_id || null,
-            cost_price: data.cost_price,
-            sale_price: data.sale_price,
-            description: data.description || null,
-            active: data.active,
-          })
-          .select()
-          .single();
-
-        if (prodErr || !newProd) {
-          throw prodErr;
+        // Tenta inserir produto com image_url se disponível
+        const prodPayload: Record<string, unknown> = {
+          name: data.name,
+          sku: eanCode.toUpperCase(),
+          category_id: data.category_id || null,
+          cost_price: data.cost_price,
+          sale_price: data.sale_price,
+          description: data.description || null,
+          active: data.active,
+        };
+        if (data.image_url) {
+          prodPayload.image_url = data.image_url;
         }
 
-        // Insere as variações de grade
-        const variantsToInsert = data.variants.map((v) => ({
-          product_id: newProd.id,
-          size: v.size,
-          color: v.color,
-          sku_variant: v.sku_variant.toUpperCase(),
-          barcode: v.barcode || null,
-          active: v.active,
-        }));
+        let newProd: any = null;
+        const res = await supabase.from("products").insert(prodPayload).select().single();
 
-        const { data: createdVariants, error: varErr } = await supabase
-          .from("product_variants")
-          .insert(variantsToInsert)
-          .select();
+        if (res.error && res.error.code === "42703") {
+          // Coluna image_url ainda não existe no Postgres do Supabase, tenta sem ela
+          delete prodPayload.image_url;
+          const retry = await supabase.from("products").insert(prodPayload).select().single();
+          newProd = retry.data;
+        } else if (!res.error) {
+          newProd = res.data;
+        }
 
-        if (!varErr) {
-          return NextResponse.json(
-            {
-              product: {
-                ...newProd,
-                variants: createdVariants,
-                variants_count: createdVariants?.length || 0,
+        if (newProd) {
+          // Insere as variações de grade com código EAN-13
+          const variantsToInsert = data.variants.map((v) => {
+            const vEan = v.ean13 || v.sku_variant || eanCode;
+            return {
+              product_id: newProd.id,
+              size: v.size,
+              color: v.color,
+              sku_variant: vEan.toUpperCase(),
+              barcode: v.barcode || vEan,
+              active: v.active,
+            };
+          });
+
+          const { data: createdVariants, error: varErr } = await supabase
+            .from("product_variants")
+            .insert(variantsToInsert)
+            .select();
+
+          if (!varErr) {
+            return NextResponse.json(
+              {
+                product: {
+                  ...newProd,
+                  ean13: newProd.sku,
+                  image_url: data.image_url || newProd.image_url || null,
+                  variants: createdVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
+                  variants_count: createdVariants?.length || 0,
+                },
               },
-            },
-            { status: 201 }
-          );
+              { status: 201 }
+            );
+          }
         }
       } catch {
         // Prossegue para o store local
@@ -126,20 +141,29 @@ export async function POST(request: NextRequest) {
 
     const created = productsStore.createProduct({
       name: data.name,
-      sku: data.sku.toUpperCase(),
+      sku: eanCode.toUpperCase(),
+      ean13: eanCode,
+      image_url: data.image_url || null,
       category_id: data.category_id || null,
       cost_price: data.cost_price,
       sale_price: data.sale_price,
       description: data.description || null,
       active: data.active,
-      variants: data.variants.map((v) => ({
-        ...v,
-        id: "",
-        product_id: "",
-        sku_variant: v.sku_variant.toUpperCase(),
-        created_at: "",
-        updated_at: "",
-      })),
+      variants: data.variants.map((v) => {
+        const vEan = v.ean13 || v.sku_variant || eanCode;
+        return {
+          id: "",
+          product_id: "",
+          size: v.size,
+          color: v.color,
+          sku_variant: vEan.toUpperCase(),
+          ean13: vEan,
+          barcode: v.barcode || vEan,
+          active: v.active,
+          created_at: "",
+          updated_at: "",
+        };
+      }),
     });
 
     return NextResponse.json({ product: created }, { status: 201 });

@@ -61,6 +61,7 @@ create table if not exists public.products (
   cost_price numeric(10, 2) not null default 0.00 check (cost_price >= 0),
   sale_price numeric(10, 2) not null check (sale_price >= 0),
   description text,
+  image_url text,
   active boolean not null default true,
   created_at timestamptz not null default timezone('utc'::text, now()),
   updated_at timestamptz not null default timezone('utc'::text, now())

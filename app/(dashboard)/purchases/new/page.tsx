@@ -259,7 +259,7 @@ export default function NewPurchasePage() {
                   >
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} ({p.sku})
+                        {p.name} (EAN: {p.ean13 || p.sku})
                       </option>
                     ))}
                   </select>
@@ -274,7 +274,7 @@ export default function NewPurchasePage() {
                   >
                     {currentSelectedProduct?.variants?.map((v) => (
                       <option key={v.id} value={v.id}>
-                        Tam: {v.size} • Cor: {v.color} ({v.sku_variant})
+                        Tam: {v.size} • Cor: {v.color} (EAN: {v.barcode || v.sku_variant})
                       </option>
                     ))}
                   </select>
@@ -344,7 +344,7 @@ export default function NewPurchasePage() {
                         <tr key={idx} className="hover:bg-muted/20">
                           <td className="px-3 py-2 font-semibold text-foreground">
                             {it.product_name}
-                            <div className="font-mono text-[10px] text-muted-foreground">{it.sku_variant}</div>
+                            <div className="font-mono text-[10px] text-muted-foreground">EAN: {it.sku_variant}</div>
                           </td>
                           <td className="px-3 py-2 font-bold">{it.size}</td>
                           <td className="px-3 py-2">{it.color}</td>

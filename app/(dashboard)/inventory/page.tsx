@@ -205,7 +205,7 @@ export default function InventoryPage() {
                 <div className="relative md:col-span-2">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar peça, cor, tamanho ou SKU..."
+                    placeholder="Buscar peça, cor, tamanho ou código EAN-13..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="pl-9"
@@ -234,7 +234,7 @@ export default function InventoryPage() {
                 <thead className="bg-muted/50 border-b text-xs font-semibold uppercase text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">Peça / Modelo</th>
-                    <th className="px-4 py-3">SKU da Variação</th>
+                    <th className="px-4 py-3">Código EAN-13</th>
                     <th className="px-4 py-3 text-center">Tamanho</th>
                     <th className="px-4 py-3">Cor</th>
                     <th className="px-4 py-3 text-center">Saldo Atual</th>
@@ -354,7 +354,7 @@ export default function InventoryPage() {
                         <div className="flex flex-col">
                           <span className="font-semibold text-foreground">{m.product_name}</span>
                           <span className="text-xs text-muted-foreground">
-                            Tam {m.size} • {m.color} ({m.sku_variant})
+                            Tam {m.size} • {m.color} • EAN: {m.sku_variant}
                           </span>
                         </div>
                       </td>

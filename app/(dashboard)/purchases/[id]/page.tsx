@@ -157,7 +157,7 @@ export default function PurchaseDetailPage({ params }: { params: { id: string } 
             <thead className="bg-muted/50 border-b text-xs font-semibold uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Peça / Modelo</th>
-                <th className="px-4 py-3">SKU Variação</th>
+                <th className="px-4 py-3">Código EAN-13</th>
                 <th className="px-4 py-3 text-center">Tamanho</th>
                 <th className="px-4 py-3">Cor</th>
                 <th className="px-4 py-3 text-center">Quantidade</th>
