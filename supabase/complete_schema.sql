@@ -103,6 +103,7 @@ create table if not exists public.customers (
   zip_code text,
   notes text,
   active boolean not null default true,
+  credit_limit numeric(12, 2) not null default 0.00,
   total_spent numeric(12, 2) not null default 0.00,
   orders_count integer not null default 0,
   last_purchase_at timestamptz,
@@ -239,10 +240,13 @@ create table if not exists public.sales (
   subtotal numeric(12, 2) not null check (subtotal >= 0),
   discount numeric(12, 2) not null default 0.00,
   total_amount numeric(12, 2) not null check (total_amount >= 0),
-  payment_method text not null check (payment_method in ('money', 'pix', 'credit_card', 'debit_card')),
+  payment_method text not null check (payment_method in ('money', 'pix', 'credit_card', 'debit_card', 'promissory')),
   amount_received numeric(12, 2),
   change_amount numeric(12, 2),
   installments integer default 1,
+  down_payment numeric(12, 2) default 0.00,
+  down_payment_method text,
+  first_due_date date,
   status text not null check (status in ('completed', 'cancelled')) default 'completed',
   created_at timestamptz not null default timezone('utc'::text, now())
 );
@@ -252,6 +256,10 @@ create table if not exists public.sale_items (
   sale_id uuid not null references public.sales(id) on delete cascade,
   product_id uuid not null references public.products(id) on delete restrict,
   variant_id uuid not null references public.product_variants(id) on delete restrict,
+  product_name text,
+  sku_variant text,
+  size text,
+  color text,
   quantity integer not null check (quantity > 0),
   unit_price numeric(10, 2) not null check (unit_price >= 0),
   discount numeric(10, 2) not null default 0.00,
@@ -303,18 +311,59 @@ alter table public.sales enable row level security;
 alter table public.sale_items enable row level security;
 alter table public.financial_transactions enable row level security;
 
--- Políticas gerais para usuários autenticados da loja
-create policy "Authenticated access to profiles" on public.profiles for all to authenticated using (true);
-create policy "Authenticated access to categories" on public.categories for all to authenticated using (true);
-create policy "Authenticated access to products" on public.products for all to authenticated using (true);
-create policy "Authenticated access to product_variants" on public.product_variants for all to authenticated using (true);
-create policy "Authenticated access to customers" on public.customers for all to authenticated using (true);
-create policy "Authenticated access to suppliers" on public.suppliers for all to authenticated using (true);
-create policy "Authenticated access to inventory_levels" on public.inventory_levels for all to authenticated using (true);
-create policy "Authenticated access to stock_movements" on public.stock_movements for all to authenticated using (true);
-create policy "Authenticated access to purchase_orders" on public.purchase_orders for all to authenticated using (true);
-create policy "Authenticated access to purchase_order_items" on public.purchase_order_items for all to authenticated using (true);
-create policy "Authenticated access to cash_sessions" on public.cash_sessions for all to authenticated using (true);
-create policy "Authenticated access to sales" on public.sales for all to authenticated using (true);
-create policy "Authenticated access to sale_items" on public.sale_items for all to authenticated using (true);
-create policy "Authenticated access to financial_transactions" on public.financial_transactions for all to authenticated using (true);
+-- Políticas gerais para chave pública (anon) e usuários autenticados da loja
+drop policy if exists "Store access to profiles" on public.profiles;
+create policy "Store access to profiles" on public.profiles for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to categories" on public.categories;
+create policy "Store access to categories" on public.categories for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to products" on public.products;
+create policy "Store access to products" on public.products for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to product_variants" on public.product_variants;
+create policy "Store access to product_variants" on public.product_variants for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to customers" on public.customers;
+create policy "Store access to customers" on public.customers for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to suppliers" on public.suppliers;
+create policy "Store access to suppliers" on public.suppliers for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to inventory_levels" on public.inventory_levels;
+create policy "Store access to inventory_levels" on public.inventory_levels for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to stock_movements" on public.stock_movements;
+create policy "Store access to stock_movements" on public.stock_movements for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to purchase_orders" on public.purchase_orders;
+create policy "Store access to purchase_orders" on public.purchase_orders for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to purchase_order_items" on public.purchase_order_items;
+create policy "Store access to purchase_order_items" on public.purchase_order_items for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to cash_sessions" on public.cash_sessions;
+create policy "Store access to cash_sessions" on public.cash_sessions for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to sales" on public.sales;
+create policy "Store access to sales" on public.sales for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to sale_items" on public.sale_items;
+create policy "Store access to sale_items" on public.sale_items for all to anon, authenticated using (true) with check (true);
+
+drop policy if exists "Store access to financial_transactions" on public.financial_transactions;
+create policy "Store access to financial_transactions" on public.financial_transactions for all to anon, authenticated using (true) with check (true);
+
+-- ------------------------------------------------------------------------------
+-- 13. DADOS INICIAIS BASE (APENAS CATEGORIAS OFICIAIS - SEM DADOS DE TESTE)
+-- ------------------------------------------------------------------------------
+insert into public.categories (name, slug, description)
+values
+  ('Vestidos', 'vestidos', 'Vestidos casuais, festa, mídi e longos'),
+  ('Lingeries & Sleepwear', 'lingeries-sleepwear', 'Conjuntos íntimos, lingeries finas, pijamas e robes acetinados'),
+  ('Camisas e Blusas', 'camisas-blusas', 'Camisas sociais, blusas em seda, linho e algodão nobre'),
+  ('Calças e Jeans', 'calcas-jeans', 'Calças alfaiataria, pantalonas, jeans e modelagens refinadas'),
+  ('Saias e Shorts', 'saias-shorts', 'Saias mídi, lápis, plissadas e shorts sofisticados'),
+  ('Casacos e Jaquetas', 'casacos-jaquetas', 'Blazers de corte fino, trench coats, casacos e jaquetas'),
+  ('Acessórios', 'acessorios', 'Cintos de couro, bolsas, lenços de seda e bijuterias finas')
+on conflict (slug) do nothing;

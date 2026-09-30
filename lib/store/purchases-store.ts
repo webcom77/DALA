@@ -2,75 +2,7 @@ import type { PurchaseOrder } from "@/types";
 import { inventoryStore } from "./inventory-store";
 import { financeStore } from "./finance-store";
 
-export const INITIAL_PURCHASES: PurchaseOrder[] = [
-  {
-    id: "purch-1",
-    order_number: "PED-00101",
-    supplier_id: "supp-1",
-    supplier_name: "Confecções Estilo & Arte",
-    status: "received",
-    payment_status: "paid",
-    total_amount: 1598.00,
-    expected_delivery: "2026-09-20",
-    received_at: "2026-09-20T14:30:00Z",
-    notes: "Lote inaugural de vestidos mídis da coleção primavera.",
-    created_at: new Date(Date.now() - 86400000 * 15).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 8).toISOString(),
-    items: [
-      {
-        id: "item-1-1",
-        product_id: "prod-1",
-        variant_id: "var-1-1",
-        product_name: "Vestido Midi Floral Evasê",
-        sku_variant: "VEST-001-P-PRETO",
-        size: "P",
-        color: "Preto",
-        quantity: 10,
-        unit_cost: 79.90,
-        total_cost: 799.00,
-      },
-      {
-        id: "item-1-2",
-        product_id: "prod-1",
-        variant_id: "var-1-2",
-        product_name: "Vestido Midi Floral Evasê",
-        sku_variant: "VEST-001-M-PRETO",
-        size: "M",
-        color: "Preto",
-        quantity: 10,
-        unit_cost: 79.90,
-        total_cost: 799.00,
-      },
-    ],
-  },
-  {
-    id: "purch-2",
-    order_number: "PED-00102",
-    supplier_id: "supp-3",
-    supplier_name: "Linhos & Tramas Naturais",
-    status: "pending",
-    payment_status: "pending",
-    total_amount: 975.00,
-    expected_delivery: "2026-10-05",
-    notes: "Reposição de camisas brancas e azuis em linho.",
-    created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-    items: [
-      {
-        id: "item-2-1",
-        product_id: "prod-2",
-        variant_id: "var-2-1",
-        product_name: "Camisa Linho Manga Longa",
-        sku_variant: "CAM-002-P-BRANCO",
-        size: "P",
-        color: "Branco",
-        quantity: 15,
-        unit_cost: 65.00,
-        total_cost: 975.00,
-      },
-    ],
-  },
-];
+export const INITIAL_PURCHASES: PurchaseOrder[] = [];
 
 declare global {
   // eslint-disable-next-line no-var

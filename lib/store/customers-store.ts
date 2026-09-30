@@ -32,82 +32,14 @@ function enrichCustomerWithDebt(customer: Customer): Customer {
   };
 }
 
-export const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: "cust-1",
-    name: "Mariana Albuquerque",
-    email: "mariana.albuquerque@email.com",
-    phone: "(11) 98765-4321",
-    cpf_cnpj: "234.567.890-12",
-    birth_date: "1994-05-18",
-    address: {
-      street: "Rua Oscar Freire",
-      number: "1230",
-      neighborhood: "Jardins",
-      city: "São Paulo",
-      state: "SP",
-      zip_code: "01426-001",
-    },
-    notes: "Prefere vestidos mídi e peças em linho. Cliente VIP.",
-    active: true,
-    total_spent: 1249.70,
-    orders_count: 5,
-    credit_limit: 2000.00,
-    last_purchase_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-    created_at: new Date(Date.now() - 86400000 * 45).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-  },
-  {
-    id: "cust-2",
-    name: "Beatriz Nogueira",
-    email: "beatriz.nogueira@email.com",
-    phone: "(11) 97654-3210",
-    cpf_cnpj: "345.678.901-23",
-    birth_date: "1988-11-24",
-    address: {
-      street: "Av. Paulista",
-      number: "800",
-      complement: "Apto 102",
-      neighborhood: "Bela Vista",
-      city: "São Paulo",
-      state: "SP",
-      zip_code: "01310-100",
-    },
-    notes: "Compra principalmente calças de alfaiataria tamanho 38.",
-    active: true,
-    total_spent: 879.80,
-    orders_count: 3,
-    credit_limit: 1500.00,
-    last_purchase_at: new Date(Date.now() - 86400000 * 8).toISOString(),
-    created_at: new Date(Date.now() - 86400000 * 60).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 8).toISOString(),
-  },
-  {
-    id: "cust-3",
-    name: "Camila Fernandes",
-    email: "camila.f@email.com",
-    phone: "(11) 99123-4567",
-    cpf_cnpj: "456.789.012-34",
-    birth_date: "1997-02-10",
-    notes: "Gosta de conjuntos e cores neutras.",
-    active: true,
-    total_spent: 459.90,
-    orders_count: 2,
-    credit_limit: 1000.00,
-    last_purchase_at: new Date(Date.now() - 86400000 * 15).toISOString(),
-    created_at: new Date(Date.now() - 86400000 * 30).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 15).toISOString(),
-  },
-];
+export const INITIAL_CUSTOMERS: Customer[] = [];
 
 declare global {
   // eslint-disable-next-line no-var
   var __DALA_CUSTOMERS__: Customer[] | undefined;
 }
 
-if (!global.__DALA_CUSTOMERS__) {
-  global.__DALA_CUSTOMERS__ = [...INITIAL_CUSTOMERS];
-}
+global.__DALA_CUSTOMERS__ = [];
 
 export const customersStore = {
   getCustomers(search?: string, filter?: "all" | "with_debt" | "overdue" | "no_debt"): Customer[] {

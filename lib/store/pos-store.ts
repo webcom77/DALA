@@ -3,86 +3,9 @@ import { inventoryStore } from "./inventory-store";
 import { customersStore } from "./customers-store";
 import { financeStore } from "./finance-store";
 
-export const INITIAL_SALES: Sale[] = [
-  {
-    id: "sale-1",
-    sale_number: "VENDA-00101",
-    customer_id: "cust-1",
-    customer_name: "Mariana Albuquerque",
-    subtotal: 189.90,
-    discount: 0,
-    total_amount: 189.90,
-    payment_method: "pix",
-    items: [
-      {
-        variant_id: "var-1-1",
-        product_id: "prod-1",
-        product_name: "Vestido Midi Floral Evasê",
-        sku_variant: "VEST-001-P-PRETO",
-        size: "P",
-        color: "Preto",
-        quantity: 1,
-        unit_price: 189.90,
-        discount: 0,
-        total_price: 189.90,
-      },
-    ],
-    status: "completed",
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: "sale-2",
-    sale_number: "VENDA-00102",
-    customer_id: "cust-2",
-    customer_name: "Beatriz Nogueira",
-    subtotal: 378.90,
-    discount: 20.00,
-    total_amount: 358.90,
-    payment_method: "credit_card",
-    installments: 3,
-    items: [
-      {
-        variant_id: "var-2-1",
-        product_id: "prod-2",
-        product_name: "Camisa Linho Manga Longa",
-        sku_variant: "CAM-002-P-BRANCO",
-        size: "P",
-        color: "Branco",
-        quantity: 1,
-        unit_price: 159.00,
-        discount: 0,
-        total_price: 159.00,
-      },
-      {
-        variant_id: "var-3-2",
-        product_id: "prod-3",
-        product_name: "Calça Jeans Wide Leg Cintura Alta",
-        sku_variant: "CALC-003-38-AZUL",
-        size: "38",
-        color: "Azul Marinho",
-        quantity: 1,
-        unit_price: 219.90,
-        discount: 20.00,
-        total_price: 199.90,
-      },
-    ],
-    status: "completed",
-    created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
-  },
-];
+export const INITIAL_SALES: Sale[] = [];
 
-export const INITIAL_CASH_SESSION: CashSession = {
-  id: "cash-1",
-  opened_by: "Administrador DALA",
-  opened_at: new Date().toISOString(),
-  initial_balance: 200.00, // R$ 200 de fundo de troco
-  total_sales: 548.80,
-  total_cash: 0,
-  total_pix: 189.90,
-  total_card: 358.90,
-  status: "open",
-  notes: "Turno da manhã aberto regularmente.",
-};
+export const INITIAL_CASH_SESSION: CashSession | null = null;
 
 declare global {
   // eslint-disable-next-line no-var
@@ -91,20 +14,15 @@ declare global {
   var __DALA_CASH_SESSION__: CashSession | null | undefined;
 }
 
-if (!global.__DALA_SALES__) {
-  global.__DALA_SALES__ = [...INITIAL_SALES];
-}
-
-if (global.__DALA_CASH_SESSION__ === undefined) {
-  global.__DALA_CASH_SESSION__ = { ...INITIAL_CASH_SESSION };
-}
+global.__DALA_SALES__ = [];
+global.__DALA_CASH_SESSION__ = null;
 
 export const posStore = {
   getActiveCashSession(): CashSession | null {
     if (global.__DALA_CASH_SESSION__ === undefined) {
-      global.__DALA_CASH_SESSION__ = { ...INITIAL_CASH_SESSION };
+      global.__DALA_CASH_SESSION__ = INITIAL_CASH_SESSION;
     }
-    return global.__DALA_CASH_SESSION__;
+    return global.__DALA_CASH_SESSION__ ?? null;
   },
 
   openCashSession(openedBy: string, initialBalance: number, notes?: string): CashSession {

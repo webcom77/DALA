@@ -1,87 +1,13 @@
 import type { FinancialSummary, FinancialTransaction } from "@/types";
 
-export const INITIAL_TRANSACTIONS: FinancialTransaction[] = [
-  {
-    id: "fin-1",
-    type: "payable",
-    category: "Aluguel & Condomínio",
-    description: "Aluguel ponto comercial loja física",
-    amount: 3200.00,
-    due_date: new Date(Date.now() + 86400000 * 5).toISOString().split("T")[0],
-    status: "pending",
-    created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
-  },
-  {
-    id: "fin-2",
-    type: "payable",
-    category: "Energia / Água",
-    description: "Conta de Energia Elétrica - Enel",
-    amount: 485.60,
-    due_date: new Date(Date.now() - 86400000 * 2).toISOString().split("T")[0],
-    status: "overdue",
-    created_at: new Date(Date.now() - 86400000 * 12).toISOString(),
-  },
-  {
-    id: "fin-3",
-    type: "payable",
-    category: "Fornecedores",
-    description: "Pedido de Compra PED-00101 - Confecções Estilo & Arte",
-    amount: 1598.00,
-    due_date: new Date(Date.now() - 86400000 * 5).toISOString().split("T")[0],
-    paid_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-    status: "paid",
-    payment_method: "pix",
-    supplier_name: "Confecções Estilo & Arte",
-    created_at: new Date(Date.now() - 86400000 * 15).toISOString(),
-  },
-  {
-    id: "fin-4",
-    type: "receivable",
-    category: "Vendas",
-    description: "Vendas balcão PDV turno anterior",
-    amount: 980.50,
-    due_date: new Date(Date.now() - 86400000 * 1).toISOString().split("T")[0],
-    paid_at: new Date(Date.now() - 86400000 * 1).toISOString(),
-    status: "paid",
-    payment_method: "credit_card",
-    created_at: new Date(Date.now() - 86400000 * 1).toISOString(),
-  },
-  {
-    id: "fin-5",
-    type: "receivable",
-    category: "Notinha Promissória",
-    description: "Notinha VENDA-00099 - Parcela 1/2 - Mariana Albuquerque",
-    amount: 250.00,
-    due_date: new Date(Date.now() + 86400000 * 10).toISOString().split("T")[0],
-    status: "pending",
-    customer_id: "cust-1",
-    customer_name: "Mariana Albuquerque",
-    reference_id: "sale-old-0",
-    created_at: new Date(Date.now() - 86400000 * 20).toISOString(),
-  },
-  {
-    id: "fin-6",
-    type: "receivable",
-    category: "Notinha Promissória",
-    description: "Notinha VENDA-00098 - Parcela 1/1 - Beatriz Nogueira",
-    amount: 180.00,
-    due_date: new Date(Date.now() - 86400000 * 5).toISOString().split("T")[0],
-    status: "overdue",
-    customer_id: "cust-2",
-    customer_name: "Beatriz Nogueira",
-    reference_id: "sale-old-1",
-    created_at: new Date(Date.now() - 86400000 * 35).toISOString(),
-  },
-];
+export const INITIAL_TRANSACTIONS: FinancialTransaction[] = [];
 
 declare global {
   // eslint-disable-next-line no-var
   var __DALA_FINANCE__: FinancialTransaction[] | undefined;
 }
 
-if (!global.__DALA_FINANCE__) {
-  global.__DALA_FINANCE__ = [...INITIAL_TRANSACTIONS];
-}
+global.__DALA_FINANCE__ = [];
 
 export const financeStore = {
   getTransactions(filters?: { type?: string; status?: string; search?: string }): FinancialTransaction[] {

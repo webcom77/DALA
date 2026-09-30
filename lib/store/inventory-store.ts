@@ -6,12 +6,9 @@ const generateInitialStock = (): Map<string, { current: number; min: number }> =
   const map = new Map<string, { current: number; min: number }>();
   const prods = productsStore.getProducts();
 
-  prods.forEach((prod, pIdx) => {
-    (prod.variants || []).forEach((v, vIdx) => {
-      // Gera quantidades realistas de loja de roupas
-      let qty = 6 + ((pIdx * 3 + vIdx * 2) % 12);
-      if (v.size === "G" && v.color === "Preto") qty = 1; // Para simular estoque baixo
-      map.set(v.id, { current: qty, min: 3 });
+  prods.forEach((prod) => {
+    (prod.variants || []).forEach((v) => {
+      map.set(v.id, { current: 0, min: 0 });
     });
   });
 
@@ -19,50 +16,7 @@ const generateInitialStock = (): Map<string, { current: number; min: number }> =
 };
 
 // Histórico inicial de movimentações
-export const INITIAL_MOVEMENTS: StockMovement[] = [
-  {
-    id: "mov-1",
-    variant_id: "var-1-1",
-    product_name: "Vestido Midi Floral Evasê",
-    sku_variant: "VEST-001-P-PRETO",
-    size: "P",
-    color: "Preto",
-    type: "entry",
-    quantity: 10,
-    previous_stock: 0,
-    new_stock: 10,
-    reason: "Entrada inicial de lote de coleção",
-    created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-  },
-  {
-    id: "mov-2",
-    variant_id: "var-2-1",
-    product_name: "Camisa Linho Manga Longa",
-    sku_variant: "CAM-002-P-BRANCO",
-    size: "P",
-    color: "Branco",
-    type: "entry",
-    quantity: 12,
-    previous_stock: 0,
-    new_stock: 12,
-    reason: "Recebimento de pedido de confecção",
-    created_at: new Date(Date.now() - 86400000 * 4).toISOString(),
-  },
-  {
-    id: "mov-3",
-    variant_id: "var-1-1",
-    product_name: "Vestido Midi Floral Evasê",
-    sku_variant: "VEST-001-P-PRETO",
-    size: "P",
-    color: "Preto",
-    type: "sale",
-    quantity: 1,
-    previous_stock: 10,
-    new_stock: 9,
-    reason: "Venda PDV cupom balcão",
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-];
+export const INITIAL_MOVEMENTS: StockMovement[] = [];
 
 declare global {
   // eslint-disable-next-line no-var

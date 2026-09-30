@@ -1,82 +1,13 @@
 import type { Supplier } from "@/types";
 
-export const INITIAL_SUPPLIERS: Supplier[] = [
-  {
-    id: "supp-1",
-    trade_name: "Confecções Estilo & Arte",
-    corporate_name: "Estilo & Arte Indústria do Vestuário Ltda",
-    cnpj: "12.345.678/0001-90",
-    email: "contato@estiloeartemoda.com.br",
-    phone: "(11) 3322-1100",
-    contact_person: "Renato Mendes",
-    category: "Vestidos e Alfaiataria",
-    address: {
-      street: "Rua Miller",
-      number: "450",
-      neighborhood: "Brás",
-      city: "São Paulo",
-      state: "SP",
-      zip_code: "03011-011",
-    },
-    notes: "Fornecedor principal da linha de vestidos e alfaiataria premium.",
-    active: true,
-    created_at: new Date(Date.now() - 86400000 * 90).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 90).toISOString(),
-  },
-  {
-    id: "supp-2",
-    trade_name: "Tecelagem & Jeans Brasil",
-    corporate_name: "Brasil Denim & Co. S/A",
-    cnpj: "98.765.432/0001-10",
-    email: "pedidos@brasildenim.com.br",
-    phone: "(19) 3456-7890",
-    contact_person: "Vanessa Rocha",
-    category: "Jeans e Sarjas",
-    address: {
-      street: "Rodovia Anhanguera",
-      number: "Km 128",
-      neighborhood: "Distrito Industrial",
-      city: "Americana",
-      state: "SP",
-      zip_code: "13470-000",
-    },
-    notes: "Excelente qualidade de lavagem jeans e corte wide leg.",
-    active: true,
-    created_at: new Date(Date.now() - 86400000 * 60).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 60).toISOString(),
-  },
-  {
-    id: "supp-3",
-    trade_name: "Linhos & Tramas Naturais",
-    corporate_name: "Linho Puro Tecidos Finos Eireli",
-    cnpj: "45.123.789/0001-55",
-    email: "vendas@linhosetramas.com.br",
-    phone: "(47) 3344-5566",
-    contact_person: "Eduardo Krause",
-    category: "Camisaria e Linho",
-    address: {
-      street: "Rua XV de Novembro",
-      number: "1500",
-      neighborhood: "Centro",
-      city: "Blumenau",
-      state: "SC",
-      zip_code: "89010-000",
-    },
-    notes: "Especialista em camisas de linho misto e puro.",
-    active: true,
-    created_at: new Date(Date.now() - 86400000 * 45).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 45).toISOString(),
-  },
-];
+export const INITIAL_SUPPLIERS: Supplier[] = [];
 
 declare global {
   // eslint-disable-next-line no-var
   var __DALA_SUPPLIERS__: Supplier[] | undefined;
 }
 
-if (!global.__DALA_SUPPLIERS__) {
-  global.__DALA_SUPPLIERS__ = [...INITIAL_SUPPLIERS];
-}
+global.__DALA_SUPPLIERS__ = [];
 
 export const suppliersStore = {
   getSuppliers(search?: string): Supplier[] {
