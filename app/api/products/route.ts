@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { productsStore } from "@/lib/store/products-store";
+import { inventoryStore } from "@/lib/store/inventory-store";
 import { productFormSchema } from "@/schemas/product";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
@@ -160,9 +161,18 @@ export async function POST(request: NextRequest) {
           if (createdVariants && createdVariants.length > 0) {
             const initialMovements: Record<string, unknown>[] = [];
             createdVariants.forEach((cv: any, idx: number) => {
+              const matchedInput =
+                data.variants.find(
+                  (dv) =>
+                    (dv.ean13 && (dv.ean13 === cv.barcode || dv.ean13 === cv.sku_variant)) ||
+                    dv.size === cv.size
+                ) ||
+                data.variants[idx];
+
               const stockQty = Number(
-                data.variants[idx]?.stock_quantity ?? (data as any).initial_stock ?? 0
+                matchedInput?.stock_quantity ?? (data as any).initial_stock ?? 0
               );
+
               if (stockQty > 0) {
                 initialMovements.push({
                   variant_id: cv.id,
@@ -176,7 +186,26 @@ export async function POST(request: NextRequest) {
             });
 
             if (initialMovements.length > 0) {
-              await supabase.from("stock_movements").insert(initialMovements);
+              const { error: smErr } = await supabase
+                .from("stock_movements")
+                .insert(initialMovements);
+              if (smErr) {
+                console.error("Erro ao registrar carga inicial de estoque no Supabase:", smErr);
+              }
+            }
+
+            // Mantém store de estoque local atualizado
+            try {
+              initialMovements.forEach((im: any) => {
+                inventoryStore.recordMovement({
+                  variant_id: im.variant_id as string,
+                  type: "entry",
+                  quantity: Number(im.quantity),
+                  reason: "Carga inicial no cadastro de produto",
+                });
+              });
+            } catch {
+              // Ignore
             }
           }
 
@@ -220,18 +249,33 @@ export async function POST(request: NextRequest) {
       variants: data.variants.map((v) => {
         const vEan = v.ean13 || v.sku_variant || eanCode;
         return {
-          id: "",
+          id: `var-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           product_id: "",
           size: v.size,
-          color: v.color,
+          color: v.color || "Padrão",
           sku_variant: vEan.toUpperCase(),
           ean13: vEan,
           barcode: v.barcode || vEan,
           active: v.active,
-          created_at: "",
-          updated_at: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
       }),
+    });
+
+    // Registra estoque inicial no store local
+    created.variants?.forEach((v, idx) => {
+      const stockQty = Number(
+        data.variants[idx]?.stock_quantity ?? (data as any).initial_stock ?? 0
+      );
+      if (stockQty > 0) {
+        inventoryStore.recordMovement({
+          variant_id: v.id,
+          type: "entry",
+          quantity: stockQty,
+          reason: "Carga inicial no cadastro de produto",
+        });
+      }
     });
 
     return NextResponse.json({ product: created }, { status: 201 });

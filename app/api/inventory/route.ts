@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
             category:categories(name),
             variants:product_variants(id, size, color, sku_variant)
           `)
-          .order("name", { ascending: true })
+          .order("created_at", { ascending: false })
           .range(page * 1000, (page + 1) * 1000 - 1);
 
         if (search) {

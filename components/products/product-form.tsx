@@ -202,7 +202,9 @@ export function ProductForm({
     if (!nextState) {
       // Reverter para Tamanho Único
       const firstEan = watch("variants.0.ean13") || initialEan;
-      const currentStock = watch("variants.0.stock_quantity") || 0;
+      const currentStock = Number(
+        watchedVariants?.[0]?.stock_quantity ?? watch("initial_stock") ?? 0
+      );
       replace([
         {
           size: "Único",
@@ -214,6 +216,7 @@ export function ProductForm({
           active: true,
         },
       ]);
+      setValue("initial_stock", currentStock, { shouldDirty: true });
       toast.info("Modo Tamanho Único ativado.");
     } else {
       // Ativar variações do P ao XG
@@ -237,7 +240,9 @@ export function ProductForm({
       return;
     }
 
-    const currentBaseStock = watch("variants.0.stock_quantity") || 0;
+    const currentBaseStock = Number(
+      watchedVariants?.[0]?.stock_quantity ?? watch("initial_stock") ?? 0
+    );
     const newVariants: ProductVariantFormData[] = targetSizes.map((size) => {
       const variantEan = generateEan13("789");
       return {
@@ -378,20 +383,36 @@ export function ProductForm({
   const onSubmit = async (data: ProductFormData) => {
     try {
       const ean = data.ean13 || generateEan13("789");
+      const baseStock = Number(
+        watchedVariants?.[0]?.stock_quantity ??
+        watch("initial_stock") ??
+        data.initial_stock ??
+        0
+      );
+
       const submissionData: ProductFormData = {
         ...data,
         ean13: ean,
         sku: ean,
+        initial_stock: baseStock,
         image_url: data.image_url || null,
-        variants: data.variants.map((v) => {
+        variants: data.variants.map((v, idx) => {
           const vEan = v.ean13 || generateEan13("789");
+          const vQty = Number(watchedVariants?.[idx]?.stock_quantity ?? v.stock_quantity);
+          const finalStock =
+            !isNaN(vQty) && vQty >= 0
+              ? vQty
+              : !isMultiSizeActive && idx === 0 && baseStock >= 0
+              ? baseStock
+              : 0;
+
           return {
             ...v,
             color: "Padrão",
             ean13: vEan,
             sku_variant: vEan,
             barcode: vEan,
-            stock_quantity: Number(v.stock_quantity || 0),
+            stock_quantity: finalStock,
           };
         }),
       };
@@ -659,7 +680,15 @@ export function ProductForm({
                       placeholder="0"
                       className="h-10 text-base font-bold text-center"
                       disabled={isSubmitting}
-                      {...register("variants.0.stock_quantity" as any)}
+                      value={watchedVariants?.[0]?.stock_quantity ?? 0}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                        setValue("variants.0.stock_quantity", val, {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                        setValue("initial_stock", val, { shouldDirty: true });
+                      }}
                     />
                   </div>
                 </div>
@@ -959,7 +988,17 @@ export function ProductForm({
                           placeholder="0"
                           className="h-8 text-xs text-center font-bold"
                           disabled={isSubmitting}
-                          {...register(`variants.${index}.stock_quantity` as any)}
+                          value={watchedVariants?.[index]?.stock_quantity ?? 0}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value, 10) || 0);
+                            setValue(`variants.${index}.stock_quantity`, val, {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            });
+                            if (!isMultiSizeActive && index === 0) {
+                              setValue("initial_stock", val, { shouldDirty: true });
+                            }
+                          }}
                         />
                       </td>
 

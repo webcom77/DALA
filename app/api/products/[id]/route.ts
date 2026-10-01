@@ -112,40 +112,82 @@ export async function PUT(
         updatedProd = res.data;
 
         if (updatedProd) {
-          // Atualiza variações: remove as antigas e insere com código EAN-13
-          await supabase.from("product_variants").delete().eq("product_id", id);
-
-          const variantsToInsert = data.variants.map((v) => {
-            const vEan = v.ean13 || v.sku_variant || eanCode;
-            return {
-              product_id: id,
-              size: v.size,
-              color: v.color || "Padrão",
-              sku_variant: vEan.toUpperCase(),
-              barcode: v.barcode || vEan,
-              active: v.active,
-            };
-          });
-
-          const { data: insertedVariants, error: varErr } = await supabase
+          // Busca variações existentes para preservar IDs e histórico de estoque
+          const { data: existingVars } = await supabase
             .from("product_variants")
-            .insert(variantsToInsert)
-            .select();
+            .select("*")
+            .eq("product_id", id);
 
-          if (varErr) {
-            console.error("Erro ao atualizar variações no Supabase:", varErr);
-            return NextResponse.json(
-              { error: `Erro ao atualizar variações da grade: ${varErr.message}` },
-              { status: 500 }
+          const finalVariants: any[] = [];
+          const keptVariantIds: string[] = [];
+
+          for (const v of data.variants) {
+            const vEan = v.ean13 || v.sku_variant || eanCode;
+            const existing = (existingVars || []).find(
+              (ev: any) => (v.id && ev.id === v.id) || ev.size === v.size
             );
+
+            if (existing) {
+              keptVariantIds.push(existing.id);
+              const { data: updatedVar } = await supabase
+                .from("product_variants")
+                .update({
+                  size: v.size,
+                  color: v.color || "Padrão",
+                  sku_variant: vEan.toUpperCase(),
+                  barcode: v.barcode || vEan,
+                  active: v.active,
+                })
+                .eq("id", existing.id)
+                .select()
+                .single();
+
+              if (updatedVar) {
+                finalVariants.push(updatedVar);
+              } else {
+                finalVariants.push(existing);
+              }
+            } else {
+              const { data: createdVar } = await supabase
+                .from("product_variants")
+                .insert({
+                  product_id: id,
+                  size: v.size,
+                  color: v.color || "Padrão",
+                  sku_variant: vEan.toUpperCase(),
+                  barcode: v.barcode || vEan,
+                  active: v.active,
+                })
+                .select()
+                .single();
+
+              if (createdVar) {
+                keptVariantIds.push(createdVar.id);
+                finalVariants.push(createdVar);
+              }
+            }
+          }
+
+          // Remove apenas variações que foram expressamente excluídas
+          const toDelete = (existingVars || []).filter(
+            (ev: any) => !keptVariantIds.includes(ev.id)
+          );
+          if (toDelete.length > 0) {
+            await supabase
+              .from("product_variants")
+              .delete()
+              .in(
+                "id",
+                toDelete.map((d: any) => d.id)
+              );
           }
 
           const finalProduct = {
             ...updatedProd,
             ean13: updatedProd.sku,
             image_url: data.image_url !== undefined ? data.image_url : updatedProd.image_url,
-            variants: insertedVariants?.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
-            variants_count: insertedVariants?.length || 0,
+            variants: finalVariants.map((v) => ({ ...v, ean13: v.barcode || v.sku_variant })),
+            variants_count: finalVariants.length,
           };
 
           try {
