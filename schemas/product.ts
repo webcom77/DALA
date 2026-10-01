@@ -51,13 +51,14 @@ export function generateProductReference(prefix = "789"): string {
 export const productVariantSchema = z.object({
   id: z.string().optional(),
   size: z.string().min(1, { message: "O tamanho é obrigatório." }),
-  color: z.string().min(1, { message: "A cor é obrigatória." }),
+  color: z.string().default("Padrão"),
   ean13: z
     .string()
     .regex(/^\d{13}$/, { message: "O código EAN-13 deve ter exatamente 13 dígitos numéricos." })
     .optional(),
   sku_variant: z.string().optional(),
   barcode: z.string().optional().nullable(),
+  stock_quantity: z.coerce.number().min(0).default(0).optional(),
   active: z.boolean().default(true),
 });
 
@@ -80,10 +81,11 @@ export const productFormSchema = z.object({
     .number({ invalid_type_error: "Informe um valor numérico para a venda." })
     .min(0.01, { message: "O preço de venda deve ser maior que zero." }),
   description: z.string().optional().nullable(),
+  initial_stock: z.coerce.number().min(0).default(0).optional(),
   active: z.boolean().default(true),
   variants: z
     .array(productVariantSchema)
-    .min(1, { message: "Cadastre pelo menos uma variação de grade (tamanho e cor)." }),
+    .min(1, { message: "Cadastre pelo menos uma variação de grade." }),
 });
 
 export type ProductVariantFormData = z.infer<typeof productVariantSchema>;

@@ -120,7 +120,7 @@ export async function PUT(
             return {
               product_id: id,
               size: v.size,
-              color: v.color,
+              color: v.color || "Padrão",
               sku_variant: vEan.toUpperCase(),
               barcode: v.barcode || vEan,
               active: v.active,

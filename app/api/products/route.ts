@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
             return {
               product_id: newProd.id,
               size: v.size,
-              color: v.color,
+              color: v.color || "Padrão",
               sku_variant: vEan.toUpperCase(),
               barcode: v.barcode || vEan,
               active: v.active,
@@ -154,6 +154,30 @@ export async function POST(request: NextRequest) {
               { error: `Erro ao salvar variações da grade: ${varErr.message}` },
               { status: 500 }
             );
+          }
+
+          // Se houver quantidade inicial informada, registra movimentação no estoque
+          if (createdVariants && createdVariants.length > 0) {
+            const initialMovements: Record<string, unknown>[] = [];
+            createdVariants.forEach((cv: any, idx: number) => {
+              const stockQty = Number(
+                data.variants[idx]?.stock_quantity ?? (data as any).initial_stock ?? 0
+              );
+              if (stockQty > 0) {
+                initialMovements.push({
+                  variant_id: cv.id,
+                  type: "entry",
+                  quantity: stockQty,
+                  previous_stock: 0,
+                  new_stock: stockQty,
+                  reason: "Carga inicial no cadastro de produto",
+                });
+              }
+            });
+
+            if (initialMovements.length > 0) {
+              await supabase.from("stock_movements").insert(initialMovements);
+            }
           }
 
           const finalProduct = {
